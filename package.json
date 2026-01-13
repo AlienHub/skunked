@@ -1,0 +1,36 @@
+{
+  "name": "kongjun-extension",
+  "displayName": "空军 - 反钓鱼卫士",
+  "version": "0.1.0",
+  "description": "基于AI语义分析的主动防御型反钓鱼工具，专注对抗针对性SEO投毒",
+  "author": "",
+  "scripts": {
+    "dev": "plasmo dev",
+    "build": "plasmo build",
+    "package": "plasmo package"
+  },
+  "dependencies": {
+    "plasmo": "^0.90.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.277",
+    "@types/node": "^22.10.5",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2"
+  },
+  "manifest": {
+    "host_permissions": [
+      "https://*/*",
+      "http://*/*"
+    ],
+    "permissions": [
+      "webNavigation",
+      "storage",
+      "tabs"
+    ]
+  }
+}

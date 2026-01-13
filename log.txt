@@ -1,0 +1,143 @@
+🔍 [页面分析] 开始分析页面
+background.ts:63 📍 [页面分析] URL: https://www-wps.com/
+background.ts:65 🆔 [页面分析] Tab ID: 1067563002
+background.ts:70 📊 [页面分析] 统计: totalScans +1
+background.ts:72 📄 [页面分析] 正在提取 DOM 内容...
+background.ts:82 ✅ [页面分析] DOM 提取成功
+background.ts:83 📝 [页面分析] 页面标题: WPS Office官方下载 - 免费办公软件套件 | WPS官网
+background.ts:85 📝 [页面分析] 页面描述: WPS Office 官方下载站，提供免费正版WPS下载。支持文字、表格、演示、PDF等全功能办公软件，兼容Microsoft Office格式，适用于Windows、Mac、Android、iOS多
+background.ts:87 
+⚙️ [页面分析] 开始三层过滤分析...
+securityEngine.ts:214 
+▶️ [三层过滤] 开始分析
+securityEngine.ts:216 ▶️ [三层过滤] URL: https://www-wps.com/
+securityEngine.ts:218 
+🔍 [Layer 1] 本地匹配检测 (<10ms)
+securityEngine.ts:227 ⏭️ [Layer 1] 无匹配，进入 Layer 2
+securityEngine.ts:229 
+🔍 [Layer 2] 启发式分析 (<50ms)
+securityEngine.ts:70   🔎 [Layer 2] 检查域名相似度...
+securityEngine.ts:88   ✓ [Layer 2] 域名相似度检测通过
+securityEngine.ts:89   🔎 [Layer 2] 检查 Typosquatting 模式...
+securityEngine.ts:102   ✓ [Layer 2] Typosquatting 检测通过
+securityEngine.ts:104   🔎 [Layer 2] 检查敏感关键词...
+securityEngine.ts:107    ⚠️ 发现敏感关键词
+securityEngine.ts:110   ⏭️ [Layer 2] 需要进一步 AI 分析
+securityEngine.ts:246 ⏭️ [Layer 2] 无明确结论，进入 Layer 3
+securityEngine.ts:249 
+🤖 [Layer 3] AI 语义分析 (500ms-2s)
+aiAnalyzer.ts:234 🤖 [AI分析] 开始 AI 语义分析
+aiAnalyzer.ts:236 📍 目标 URL: https://www-wps.com/
+aiAnalyzer.ts:251 🔧 [AI配置] Provider: openai
+aiAnalyzer.ts:252 🔧 [AI配置] Base URL: https://api.moonshot.cn/v1
+aiAnalyzer.ts:253 🔧 [AI配置] Model: kimi-k2-turbo-preview
+aiAnalyzer.ts:255 🔧 [AI配置] API Key: sk-ghbfgCD...
+aiAnalyzer.ts:268 📝 [AI分析] Prompt 长度: 1669 字符
+aiAnalyzer.ts:270 🚀 [AI分析] 正在调用 AI API...
+aiAnalyzer.ts:129 🌐 [API调用] URL: https://api.moonshot.cn/v1/chat/completions
+aiAnalyzer.ts:131 🌐 [API调用] Model: kimi-k2-turbo-preview
+aiAnalyzer.ts:149 📤 [API调用] Request Body: {
+  "model": "kimi-k2-turbo-preview",
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是一个网络安全专家，专门识别钓鱼网站。"
+    },
+    {
+      "role": "user",
+      "content": "你是一个网络安全专家。请分析以下网页是否为钓鱼网站。\n\n**当前访问的URL**: https://www-wps.com/\n**页面标题**: WPS Office官方下载 - 免费办公软件套件 | WPS官网\n**H1标题**: WPS Office\n**页面描述**: WPS Office 官方下载站，提供免费正版WPS下载。支持文字、表格、演示、PDF等全功能办公软件，兼容Microsoft Office格式，适用于Windows、Mac、Android、iOS多平台。\n**下载按钮文本**: WWPS Office, 首页, 下载, 新闻, 关于我们, 联系我们, 立即下载, 查看更多, 多维表格•2026/1/9如何在WPS多维表格实现下拉菜单数据联动2026版WPS多维表格级联下拉完整配置指南，含桌面/移动端路径与回退方案, 样式管理•2026/1/8WPS文字样式集跨文档统一调用操作指南WPS文字样式集跨文档统一调用，一键同步模板与样式，多端复现不再错位, 数据引用•2026/1/7WPS表格跨工作簿引用公式实时更新设置WPS表格跨工作簿引用公式实时更新设置：一键链接云端数据源，自动刷新无延迟。, 性能优化•2026/1/6逐步拆解：WPS多维表格数据透视缓存重建全流程WPS多维表透视缓存重建全流程：合规视角提速、降本、留痕，附分平台路径与回退方案。, 权限管理•2026/1/5WPS公共模板库部门共享最佳实践指南WPS公共模板库部门共享最佳实践指南，教你用权限分级+审计日志，让模板复用既高效又合规。, 演示设置•2026/1/4WPS演示双屏演讲者视图配置与计时器同步设置WPS演示12.9.2双屏演讲者视图一步配置，计时器同步与回退方案全解析, 功能介绍, 下载中心, 新闻资讯, 关于我们, 联系我们, 隐私政策\n**页面关键词**: 下载, download, 免费\n\n**目标软件**: 飞书\n\n**钓鱼网站定义**:\n钓鱼网站是指：假冒官方软件网站，诱导用户下载恶意软件或窃取用户信息的网站。\n\n**判断标准**:\n1. **域名检查**: 当前域名是否为该软件的官方域名？\n   - 如果不是官方域名，但声称提供该软件下载，极大概率是钓鱼网站\n   - 官方域名示例：\n     * WPS: wps.cn, kingsoft.com\n     * 飞书: feishu.cn, larksuite.com\n     * 钉钉: dingtalk.com\n     * 微信: weixin.qq.com, wechat.com\n     * QQ: qq.com\n     * 向日葵: oray.com\n\n2. **冒充行为**: 页面是否使用官方品牌名称、Logo、声称\"官方下载\"等？\n\n3. **诱导特征**: 是否存在\"破解版\"、\"绿色版\"、\"免费VIP\"、\"高速下载\"等诱导性词汇？\n\n**判定逻辑**:\n- 如果域名非官方，但页面标题/内容声称是该软件的下载页面 → 必定是钓鱼网站\n- 如果域名高度相似（如 wps-download.com, feishu-vip.cn）→ 必定是钓鱼网站\n- 置信度应反映判定的确定性，80%以上应为高置信度\n\n**输出要求**:\n请以JSON格式输出，格式如下：\n{\n  \"is_phishing\": true/false,\n  \"confidence\": 0-100的数字,\n  \"reason\": \"简短判断理由（中文）\",\n  \"suspicious_elements\": [\"可疑元素1\", \"可疑元素2\"]\n}\n\n**重要**:\n- is_phishing 为 true 表示这是钓鱼网站，需要拦截\n- is_phishing 为 false 表示这是安全的官方网站\n- 如果域名不是官方域名但提供软件下载，is_phishing 必须为 true\n- 置信度80%以上表示高度确定\n\n只输出JSON，不要包含其他文字。"
+    }
+  ],
+  "max_tokens": 500,
+  "temperature": 0.1
+}
+aiAnalyzer.ts:160 📥 [API调用] Response Status: 200 
+aiAnalyzer.ts:169 📦 [API调用] Response Data: {
+  "id": "chatcmpl-6960c8d2bba1f1e52cbfc8b9",
+  "object": "chat.completion",
+  "created": 1767950548,
+  "model": "kimi-k2-turbo-preview",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\"is_phishing\":true,\"confidence\":95,\"reason\":\"域名www-wps.com非WPS官方域名，却冒充WPS官网并提供下载\",\"suspicious_elements\":[\"非官方域名\",\"页面标题声称“WPS官网”\",\"诱导性“立即下载”按钮\"]}"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 875,
+    "completion_tokens": 60,
+    "total_tokens": 935
+  }
+}
+aiAnalyzer.ts:172 💬 [API调用] Response Content: {"is_phishing":true,"confidence":95,"reason":"域名www-wps.com非WPS官方域名，却冒充WPS官网并提供下载","suspicious_elements":["非官方域名","页面标题声称“WPS官网”","诱导性“立即下载”按钮"]}
+aiAnalyzer.ts:176 ✅ [API调用] 解析成功: {is_phishing: true, confidence: 95, reason: '域名www-wps.com非WPS官方域名，却冒充WPS官网并提供下载', suspicious_elements: Array(3)}
+aiAnalyzer.ts:283 ✅ [AI分析] API 调用成功！耗时: 3317ms
+aiAnalyzer.ts:285 📊 [AI分析] 原始结果: {is_phishing: true, confidence: 95, reason: '域名www-wps.com非WPS官方域名，却冒充WPS官网并提供下载', suspicious_elements: Array(3)}
+aiAnalyzer.ts:289  ⚠️ [AI分析] 检测到矛盾结果：AI 说不是钓鱼但置信度很高
+analyzeWithAI @ aiAnalyzer.ts:289
+await in analyzeWithAI
+layer3AIAnalysis @ securityEngine.ts:143
+await in layer3AIAnalysis
+analyzePageSecurity @ securityEngine.ts:250
+await in analyzePageSecurity
+analyzePage @ background.ts:93
+await in analyzePage
+(匿名) @ background.ts:55
+aiAnalyzer.ts:290  ⚠️ [AI分析] 置信度: 95%
+analyzeWithAI @ aiAnalyzer.ts:290
+await in analyzeWithAI
+layer3AIAnalysis @ securityEngine.ts:143
+await in layer3AIAnalysis
+analyzePageSecurity @ securityEngine.ts:250
+await in analyzePageSecurity
+analyzePage @ background.ts:93
+await in analyzePage
+(匿名) @ background.ts:55
+aiAnalyzer.ts:292  ⚠️ [AI分析] 判定依据: 域名www-wps.com非WPS官方域名，却冒充WPS官网并提供下载
+analyzeWithAI @ aiAnalyzer.ts:292
+await in analyzeWithAI
+layer3AIAnalysis @ securityEngine.ts:143
+await in layer3AIAnalysis
+analyzePageSecurity @ securityEngine.ts:250
+await in analyzePageSecurity
+analyzePage @ background.ts:93
+await in analyzePage
+(匿名) @ background.ts:55
+aiAnalyzer.ts:300  🔧 [AI分析] 修正判定：检测到可疑关键词，重新标记为钓鱼网站
+analyzeWithAI @ aiAnalyzer.ts:300
+await in analyzeWithAI
+layer3AIAnalysis @ securityEngine.ts:143
+await in layer3AIAnalysis
+analyzePageSecurity @ securityEngine.ts:250
+await in analyzePageSecurity
+analyzePage @ background.ts:93
+await in analyzePage
+(匿名) @ background.ts:55
+aiAnalyzer.ts:306 📊 [AI分析] 最终结果: {is_phishing: true, confidence: 95, reason: '域名www-wps.com非WPS官方域名，却冒充WPS官网并提供下载（已自动修正）', suspicious_elements: Array(3), isPhishing: true}
+securityEngine.ts:153   🔍 [Layer 3] 开始软件匹配...
+securityEngine.ts:155   🔍 [Layer 3] 匹配文本: https://www-wps.com/ wps office官方下载 - 免费办公软件套件 | wps官网 wps office 域名www-wps.com非wps官方域名，却冒充wps官网并提供下载（已自动修正）
+securityEngine.ts:161   💡 [Layer 3] 匹配到软件: 飞书
+securityEngine.ts:162   💡 [Layer 3] 匹配关键词: 办公
+securityEngine.ts:251 🤖 [Layer 3] 分析完成
+background.ts:94 
+────────────────────────────────────────────────────────────
+background.ts:95 📊 [分析结果] ==================
+background.ts:96 📊 [分析结果] 是否钓鱼: ⚠️ 是
+background.ts:97 📊 [分析结果] 置信度: 95%
+background.ts:98 📊 [分析结果] 判定依据: 域名www-wps.com非WPS官方域名，却冒充WPS官网并提供下载（已自动修正）
+background.ts:99 📊 [分析结果] 分析层级: ai
+background.ts:102 📊 [分析结果] 识别软件: 飞书
+background.ts:104 ────────────────────────────────────────────────────────────
+
+background.ts:111 🚨 [防护措施] 检测到钓鱼网站
+background.ts:112 🚨 [防护措施] 当前置信度: 95%
+background.ts:113 🚨 [防护措施] 拦截阈值: 90%
+background.ts:115 🚨 [防护措施] 警告阈值: 60%
+background.ts:118 🛑 [防护措施] 触发红色全屏覆盖 (90%+)
+background.ts:119 🛑 [防护措施] matchedSoftware: {id: 'feishu', name: '飞书', nameEn: 'Feishu', officialDomains: Array(2), keywords: Array(6), …}
+background.ts:172 💾 [存储] 分析结果已保存到 storage
+background.ts:173 
