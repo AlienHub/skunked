@@ -1,10 +1,10 @@
 {
-  "version": "20260606.4041d98c",
-  "generatedAt": "2026-06-06T01:41:30.391Z",
+  "version": "20260606.56abb7e6",
+  "generatedAt": "2026-06-06T07:02:40.815Z",
   "recordCounts": {
     "apps": 100,
     "officialDomains": 145,
-    "phishingConfirmed": 394
+    "phishingConfirmed": 108
   },
-  "sha256": "4041d98c09220de0b853484ab161cb86f344473f56c037f82e79361bf7f58762"
+  "sha256": "56abb7e68f259ff89eff14533b83281d33a07390534611139df7c55e28bd54e6"
 }
