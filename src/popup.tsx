@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react"
 import "./style.css"
+
+import { useEffect, useState } from "react"
 
 interface Stats {
   totalScans: number
@@ -8,20 +9,53 @@ interface Stats {
   officialVerified: number
 }
 
-interface Settings {
-  enableAI: boolean
-}
-
-interface AnalysisResult {
+interface PageStatus {
   status: "safe" | "warning" | "blocked" | "pending"
   result?: {
-    isPhishing: boolean
-    confidence: number
     reason: string
-    matchedSoftware?: {
-      name: string
-      officialDomains: string[]
+    confidence: number
+    matchedBrand?: string
+  }
+}
+
+interface RuntimeInfo {
+  datasetVersion?: string
+}
+
+function statusMeta(status: PageStatus["status"]) {
+  if (status === "blocked") {
+    return {
+      label: "已阻止风险",
+      tone: "danger" as const,
+      icon: "!",
+      title: "已为你拦截疑似钓鱼页面",
+      description: "建议通过官方入口重新访问或下载软件。"
     }
+  }
+  if (status === "warning") {
+    return {
+      label: "需要留意",
+      tone: "warning" as const,
+      icon: "?",
+      title: "此页面存在仿冒风险",
+      description: "如果要下载办公或远控软件，请优先前往官网。"
+    }
+  }
+  if (status === "safe") {
+    return {
+      label: "基础防护中",
+      tone: "safe" as const,
+      icon: "✓",
+      title: "未发现目标钓鱼风险",
+      description: "SKUNKED 正在本地检查高仿软件下载页和可疑域名。"
+    }
+  }
+  return {
+    label: "基础防护中",
+    tone: "neutral" as const,
+    icon: "·",
+    title: "正在保护当前浏览",
+    description: "遇到高仿软件下载页时会自动告警或阻断。"
   }
 }
 
@@ -32,197 +66,100 @@ function IndexPopup() {
     warningShown: 0,
     officialVerified: 0
   })
-  const [settings, setSettings] = useState<Settings>({ enableAI: false })
-  const [currentPageStatus, setCurrentPageStatus] = useState<AnalysisResult | null>(null)
-  const [currentTabId, setCurrentTabId] = useState<number | null>(null)
+  const [pageStatus, setPageStatus] = useState<PageStatus>({
+    status: "pending"
+  })
+  const [runtime, setRuntime] = useState<RuntimeInfo>({
+  })
 
   useEffect(() => {
-    // Load stats and settings
-    chrome.storage.local.get(["stats", "settings"], (data) => {
-      if (data.stats) setStats(data.stats)
-      if (data.settings) setSettings(data.settings)
+    chrome.storage.local.get(["stats"], (data) => {
+      if (data.stats) {
+        setStats(data.stats)
+      }
     })
 
-    // Get current tab
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]?.id) {
-        const tabId = tabs[0].id
-        setCurrentTabId(tabId)
+      const tabId = tabs?.[0]?.id
+      if (!tabId) return
+      chrome.storage.local.get(`analysis_${tabId}`, (data) => {
+        if (data[`analysis_${tabId}`]) {
+          setPageStatus(data[`analysis_${tabId}`])
+        }
+      })
+    })
 
-        // Get current page status
-        chrome.storage.local.get(`analysis_${tabId}`, (data) => {
-          if (data[`analysis_${tabId}`]) {
-            setCurrentPageStatus(data[`analysis_${tabId}`])
-          }
-        })
+    chrome.runtime.sendMessage({ action: "get_runtime_info" }, (response) => {
+      if (response?.success && response?.data) {
+        setRuntime(response.data)
       }
     })
   }, [])
 
-  const openOptions = () => {
-    chrome.runtime.openOptionsPage()
-  }
-
-  const getStatusIcon = (status?: string) => {
-    switch (status) {
-      case "safe":
-        return "✅"
-      case "warning":
-        return "⚠️"
-      case "blocked":
-        return "🛡️"
-      default:
-        return "ℹ️"
-    }
-  }
-
-  const getStatusText = (status?: string) => {
-    switch (status) {
-      case "safe":
-        return "安全"
-      case "warning":
-        return "可疑"
-      case "blocked":
-        return "已拦截"
-      default:
-        return "未检测"
-    }
-  }
-
-  const getStatusColor = (status?: string) => {
-    switch (status) {
-      case "safe":
-        return "#16a34a"
-      case "warning":
-        return "#f59e0b"
-      case "blocked":
-        return "#dc2626"
-      default:
-        return "#6b7280"
-    }
-  }
+  const meta = statusMeta(pageStatus.status)
 
   return (
-    <div className="plasmo-container">
-      {/* Header */}
-      <div className="header">
-        <div className="logo">
-          <span className="logo-icon">🛡️</span>
+    <div className="popup-root">
+      <header className="popup-header">
+        <div>
+          <h1>SKUNKED</h1>
+          <p>反钓鱼防护</p>
+        </div>
+        <span className={`badge badge-${meta.tone}`}>{meta.label}</span>
+      </header>
+
+      <section className={`card card-${meta.tone}`}>
+        <div className="status-row">
+          <span className="status-icon">{meta.icon}</span>
           <div>
-            <h1>空军</h1>
-            <p className="subtitle">AI 反钓鱼卫士</p>
+            <p className="status-title">{meta.title}</p>
+            <p className="status-desc">
+              {pageStatus.result?.reason || meta.description}
+            </p>
           </div>
         </div>
-      </div>
-
-      {/* Vision Section */}
-      <div className="vision-section">
-        <p className="vision-text">
-          用 AI 技术守护您的网络安全，抵御钓鱼网站和恶意软件威胁。
-        </p>
-      </div>
-
-      {/* Current Page Status */}
-      <div className="section">
-        <h3 className="section-title">当前页面</h3>
-        <div
-          className="status-card"
-          style={{
-            borderLeft: `4px solid ${getStatusColor(currentPageStatus?.status)}`
-          }}
-        >
-          <div className="status-header">
-            <span className="status-icon">{getStatusIcon(currentPageStatus?.status)}</span>
-            <span
-              className="status-text"
-              style={{ color: getStatusColor(currentPageStatus?.status) }}
-            >
-              {getStatusText(currentPageStatus?.status)}
-            </span>
-          </div>
-          {currentPageStatus?.result && (
-            <div className="status-details">
-              {currentPageStatus.result.matchedSoftware && (
-                <p className="detail-item">
-                  <strong>识别软件：</strong>
-                  {currentPageStatus.result.matchedSoftware.name}
-                </p>
-              )}
-              <p className="detail-item">
-                <strong>判定依据：</strong>
-                {currentPageStatus.result.reason}
-              </p>
-              {currentPageStatus.result.confidence > 0 && (
-                <p className="detail-item">
-                  <strong>置信度：</strong>
-                  {currentPageStatus.result.confidence}%
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Stats Section */}
-      <div className="section">
-        <h3 className="section-title">防护统计</h3>
-        <div className="stats-grid">
-          <div className="stat-item">
-            <div className="stat-value">{stats.totalScans}</div>
-            <div className="stat-label">扫描次数</div>
-          </div>
-          <div className="stat-item danger">
-            <div className="stat-value">{stats.phishingBlocked}</div>
-            <div className="stat-label">拦截钓鱼</div>
-          </div>
-          <div className="stat-item warning">
-            <div className="stat-value">{stats.warningShown}</div>
-            <div className="stat-label">警告提示</div>
-          </div>
-          <div className="stat-item safe">
-            <div className="stat-value">{stats.officialVerified}</div>
-            <div className="stat-label">安全认证</div>
-          </div>
-        </div>
-      </div>
-
-      {/* AI Configuration Notice */}
-      <div className="ai-notice">
-        {!settings.enableAI ? (
-          <div className="ai-notice-card warning">
-            <span className="notice-icon">⚠️</span>
-            <div className="notice-content">
-              <p className="notice-title">AI 检测未启用</p>
-              <p className="notice-desc">
-                配置 AI API Key 可提升检测准确率，拦截更精准的钓鱼网站
-              </p>
-              <button className="btn btn-primary" onClick={openOptions}>
-                前往配置
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="ai-notice-card success">
-            <span className="notice-icon">✅</span>
-            <div className="notice-content">
-              <p className="notice-title">AI 检测已启用</p>
-              <p className="notice-desc">
-                AI 正在保护您的网络安全，智能识别钓鱼网站
-              </p>
-              <button className="btn btn-secondary" onClick={openOptions}>
-                管理配置
-              </button>
-            </div>
-          </div>
+        {pageStatus.status !== "safe" && !!pageStatus.result?.confidence && (
+          <p className="confidence">置信度 {pageStatus.result.confidence}%</p>
         )}
-      </div>
+      </section>
 
-      {/* Footer */}
-      <div className="footer">
-        <p className="footer-text">
-          空军 v0.1.0 • 三层过滤 • AI 智能防护
+      <section className="card">
+        <h2>防护统计</h2>
+        <div className="metric-grid">
+          <div className="metric">
+            <span>{stats.phishingBlocked}</span>
+            <small>已阻止</small>
+          </div>
+          <div className="metric">
+            <span>{stats.warningShown}</span>
+            <small>告警</small>
+          </div>
+          <div className="metric">
+            <span>{stats.officialVerified}</span>
+            <small>官方验证</small>
+          </div>
+          <div className="metric">
+            <span>{stats.totalScans}</span>
+            <small>已检查</small>
+          </div>
+        </div>
+      </section>
+
+      <section className="card">
+        <h2>数据集</h2>
+        <p className="tenant-line">
+          数据集版本：{runtime.datasetVersion || "fallback-local-v1"}
         </p>
-      </div>
+      </section>
+
+      <footer className="popup-footer">
+        <button
+          className="ghost-btn"
+          onClick={() => chrome.runtime.openOptionsPage()}
+        >
+          设置
+        </button>
+      </footer>
     </div>
   )
 }

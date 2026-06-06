@@ -1,290 +1,500 @@
-import { PhishingAnalysisResult, ExtractedDOMContent, OfficialSoftware } from "../types"
 import {
-  isOfficialDomain,
+  AnalyzeRequestPayload,
+  BrandSignalMode,
+  EffectivePolicy,
+  ExtractedDOMContent,
+  OfficialSoftware,
+  OpenDatasetState,
+  PhishingAnalysisResult
+} from "../types"
+import {
+  getBlacklist,
+  getEffectivePolicy,
+  getFromCache,
+  getTenantActivation,
+  saveToCache
+} from "../utils/cache"
+import {
   checkDomainSimilarity,
-  detectTyposquattingPatterns,
   containsSensitiveKeywords,
+  detectTyposquattingPatterns,
+  extractDomain,
+  isOfficialDomain,
+  isSameOrSubdomain,
   isSearchEngine
 } from "../utils/domainMatcher"
-import { getSoftwareByDomain, getAllKeywords } from "../data/officialRegistry"
 import { analyzeWithAI } from "./aiAnalyzer"
-import { getFromCache, saveToCache, getBlacklist, getSettings } from "../utils/cache"
+import { matchBrandFromSignals } from "./brandMatcher"
+import { getCurrentOpenDataset } from "./openDataset"
+
+export const NEEDS_DOM_REVIEW_REASON = "无可用上下文，默认放行"
+
+function buildResult(
+  input: Omit<PhishingAnalysisResult, "timestamp" | "source"> & {
+    source?: "local" | "cloud"
+  }
+): PhishingAnalysisResult {
+  return {
+    ...input,
+    timestamp: Date.now(),
+    source: input.source || "local"
+  }
+}
+
+function resolveVerdictByPolicy(
+  confidence: number,
+  policy: EffectivePolicy
+): "allow" | "warn" | "block" {
+  if (confidence >= policy.blockThreshold) return "block"
+  if (confidence >= policy.warningThreshold) return "warn"
+  return "allow"
+}
+
+function datasetOfficialDomains(dataset: OpenDatasetState): string[] {
+  return dataset.apps.flatMap((app) => app.officialDomains)
+}
+
+const DOWNLOAD_INTENT_KEYWORDS = [
+  "下载",
+  "download",
+  "安装",
+  "install",
+  "setup",
+  "客户端",
+  "client",
+  "pc版",
+  "windows",
+  "mac",
+  "exe",
+  "dmg"
+]
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
+function dedupeNonEmpty(values: string[]): string[] {
+  const seen = new Set<string>()
+  const output: string[] = []
+
+  for (const item of values) {
+    const normalized = item.trim().toLowerCase()
+    if (!normalized || seen.has(normalized)) continue
+    seen.add(normalized)
+    output.push(normalized)
+  }
+
+  return output
+}
+
+function domainStem(value: string): string {
+  const host = extractDomain(value).toLowerCase()
+  const labels = host.split(".")
+  return labels[0] || host
+}
+
+function identityAnchorsForApp(app: OfficialSoftware): string[] {
+  return dedupeNonEmpty([
+    app.id,
+    app.slug,
+    app.name,
+    app.nameEn,
+    ...app.officialDomains.map((domain) => domainStem(domain))
+  ])
+}
+
+function textIncludesToken(text: string, token: string): boolean {
+  const normalizedText = text.toLowerCase()
+  const normalizedToken = token.trim().toLowerCase()
+  if (!normalizedToken) return false
+
+  // CJK tokens are usually meaningful enough for direct substring matching.
+  if (/[^\u0000-\u007f]/.test(normalizedToken)) {
+    return normalizedText.includes(normalizedToken)
+  }
+
+  if (/^[a-z0-9-]+$/.test(normalizedToken) && normalizedToken.length <= 3) {
+    const pattern = new RegExp(
+      `(^|[^a-z0-9])${escapeRegex(normalizedToken)}([^a-z0-9]|$)`,
+      "i"
+    )
+    return pattern.test(normalizedText)
+  }
+
+  return normalizedText.includes(normalizedToken)
+}
+
+function resolveScopedApps(
+  url: string,
+  pageTitle: string | undefined,
+  dataset: OpenDatasetState,
+  brandSignalMode: BrandSignalMode
+): OfficialSoftware[] {
+  const signalText =
+    brandSignalMode === "page_signals"
+      ? `${url} ${pageTitle || ""}`.toLowerCase()
+      : url.toLowerCase()
+
+  return dataset.apps.filter((app) =>
+    identityAnchorsForApp(app).some((anchor) => textIncludesToken(signalText, anchor))
+  )
+}
+
+function hasDownloadIntent(url: string, pageTitle?: string): boolean {
+  const text = `${url} ${pageTitle || ""}`.toLowerCase()
+  return DOWNLOAD_INTENT_KEYWORDS.some((keyword) => text.includes(keyword))
+}
+
+function matchKnownPhishingDomain(url: string, dataset: OpenDatasetState) {
+  const matched = dataset.phishingConfirmed.find((record) =>
+    isSameOrSubdomain(url, record.domain)
+  )
+
+  if (!matched) return null
+
+  const software = matched.targetAppId
+    ? dataset.apps.find((item) => item.id === matched.targetAppId)
+    : undefined
+
+  return {
+    record: matched,
+    software
+  }
+}
 
 /**
  * Layer 1: Local Fast Match (<10ms)
- * - Whitelist check -> Allow immediately
- * - Blacklist check -> Block immediately
  */
-export async function layer1LocalMatch(url: string): Promise<PhishingAnalysisResult | null> {
-  // Check if it's a search engine (safe)
+export async function layer1LocalMatch(
+  url: string,
+  dataset: OpenDatasetState
+): Promise<PhishingAnalysisResult | null> {
   if (isSearchEngine(url)) {
-    console.log("✅ [Layer 1] 搜索引擎页面，直接通过")
-    return {
-      isPhishing: false,
+    return buildResult({
+      verdict: "allow",
       confidence: 100,
-      reason: "搜索引擎页面（百度、Bing、Google等）",
+      reason: "搜索引擎页面，跳过拦截",
       layer: "whitelist",
-      timestamp: Date.now()
-    }
+      datasetVersion: dataset.datasetVersion
+    })
   }
 
-  // Check whitelist
-  if (isOfficialDomain(url)) {
-    const software = getSoftwareByDomain(url)
-    return {
-      isPhishing: false,
+  const officialDomains = datasetOfficialDomains(dataset)
+  if (isOfficialDomain(url, officialDomains)) {
+    const software = dataset.apps.find((app) =>
+      app.officialDomains.some((officialDomain) =>
+        isSameOrSubdomain(url, officialDomain)
+      )
+    )
+
+    return buildResult({
+      verdict: "allow",
       confidence: 100,
       reason: `官方认证域名：${software?.name || "已知官方站点"}`,
       matchedSoftware: software,
+      matchedBrand: software?.name,
       layer: "whitelist",
-      timestamp: Date.now()
-    }
+      datasetVersion: dataset.datasetVersion
+    })
   }
 
-  // Check blacklist (from chrome.storage)
-  const blacklist = await getBlacklist()
-
-  if (blacklist.some((blocked) => url.includes(blocked))) {
-    return {
-      isPhishing: true,
+  const datasetHit = matchKnownPhishingDomain(url, dataset)
+  if (datasetHit) {
+    return buildResult({
+      verdict: "block",
       confidence: 100,
-      reason: "已知钓鱼网站（黑名单）",
+      reason: "命中公开确认钓鱼域名库",
+      matchedSoftware: datasetHit.software,
+      matchedBrand: datasetHit.software?.name,
       layer: "blacklist",
-      timestamp: Date.now()
-    }
+      datasetVersion: dataset.datasetVersion
+    })
   }
 
-  return null // No match, proceed to Layer 2
+  const localBlacklist = await getBlacklist()
+  if (localBlacklist.some((blocked) => isSameOrSubdomain(url, blocked))) {
+    return buildResult({
+      verdict: "block",
+      confidence: 100,
+      reason: "命中本地黑名单",
+      layer: "blacklist",
+      datasetVersion: dataset.datasetVersion
+    })
+  }
+
+  return null
 }
 
 /**
  * Layer 2: Heuristic Analysis (<50ms)
- * - Check for suspicious domain patterns
- * - Check for trigger keywords in URL/domain
  */
 export async function layer2Heuristics(
   url: string,
-  pageTitle?: string
-): Promise<PhishingAnalysisResult | null> {
-  console.log("  🔎 [Layer 2] 检查域名相似度...")
-  // Check domain similarity
-  const similarityResult = checkDomainSimilarity(url)
+  pageTitle: string | undefined,
+  policy: EffectivePolicy,
+  dataset: OpenDatasetState
+): Promise<{
+  immediate?: PhishingAnalysisResult
+  shouldEscalateToCloud: boolean
+  layerHint: "heuristics" | "keyword"
+  reason: string
+}> {
+  if (detectTyposquattingPatterns(url, { includeGenericPatterns: false })) {
+    return {
+      immediate: buildResult({
+        verdict: "block",
+        confidence: 86,
+        reason: "检测到品牌域名混淆模式",
+        layer: "heuristics",
+        datasetVersion: dataset.datasetVersion
+      }),
+      shouldEscalateToCloud: false,
+      layerHint: "heuristics",
+      reason: "brand-typosquatting"
+    }
+  }
+
+  const scopedApps = resolveScopedApps(
+    url,
+    pageTitle,
+    dataset,
+    policy.brandSignalMode
+  )
+  if (!scopedApps.length) {
+    return {
+      immediate: buildResult({
+        verdict: resolveVerdictByPolicy(8, policy),
+        confidence: 8,
+        reason: "非受保护软件场景，跳过深度检测",
+        layer: "heuristics",
+        datasetVersion: dataset.datasetVersion
+      }),
+      shouldEscalateToCloud: false,
+      layerHint: "heuristics",
+      reason: "out-of-scope"
+    }
+  }
+
+  const scopedOfficialDomains = scopedApps.flatMap((app) => app.officialDomains)
+  const similarityResult = checkDomainSimilarity(url, scopedOfficialDomains)
+
   if (similarityResult) {
-    const software = getSoftwareByDomain(similarityResult.officialDomain)
-    console.log("  ⚠️ [Layer 2] 发现相似域名！")
-    console.log("  ⚠️ [Layer 2] 相似度:", Math.round(similarityResult.score * 100) + "%")
-    console.log("  ⚠️ [Layer 2] 相似域名:", similarityResult.officialDomain)
+    const software = scopedApps.find((app) =>
+      app.officialDomains.includes(similarityResult.officialDomain)
+    )
+
     return {
-      isPhishing: true,
-      confidence: Math.round(similarityResult.score * 100),
-      reason: `域名与官方站点高度相似（${similarityResult.officialDomain}）`,
-      matchedSoftware: software,
-      layer: "heuristics",
-      timestamp: Date.now()
+      immediate: buildResult({
+        verdict: "block",
+        confidence: Math.max(88, Math.round(similarityResult.score * 100)),
+        reason: `域名与官方站点高度相似（${similarityResult.officialDomain}）`,
+        matchedSoftware: software,
+        matchedBrand: software?.name,
+        layer: "heuristics",
+        datasetVersion: dataset.datasetVersion
+      }),
+      shouldEscalateToCloud: false,
+      layerHint: "heuristics",
+      reason: "similar-domain"
     }
   }
-  console.log("  ✓ [Layer 2] 域名相似度检测通过")
 
-  console.log("  🔎 [Layer 2] 检查 Typosquatting 模式...")
-  // Check typosquatting patterns
-  if (detectTyposquattingPatterns(url)) {
-    console.log("  ⚠️ [Layer 2] 匹配到钓鱼域名模式！")
+  if (detectTyposquattingPatterns(url, { includeGenericPatterns: true })) {
     return {
-      isPhishing: true,
-      confidence: 85,
-      reason: "检测到域名混淆模式（typosquatting）",
-      layer: "heuristics",
-      timestamp: Date.now()
+      immediate: buildResult({
+        verdict: "block",
+        confidence: 86,
+        reason: "检测到域名混淆模式",
+        layer: "heuristics",
+        datasetVersion: dataset.datasetVersion
+      }),
+      shouldEscalateToCloud: false,
+      layerHint: "heuristics",
+      reason: "typosquatting"
     }
   }
-  console.log("  ✓ [Layer 2] Typosquatting 检测通过")
 
-  // Check if URL/page title contains sensitive keywords
-  console.log("  🔎 [Layer 2] 检查敏感关键词...")
-  const hasKeyword = containsSensitiveKeywords(url, pageTitle)
-  console.log("  ", hasKeyword ? "⚠️ 发现敏感关键词" : "✓ 无敏感关键词")
+  const scopedKeywords = scopedApps.flatMap((app) => app.keywords)
+  const keywordHit = containsSensitiveKeywords(url, pageTitle, scopedKeywords)
+  const downloadIntent = hasDownloadIntent(url, pageTitle)
 
-  if (hasKeyword) {
-    // Suspicious but not certain - proceed to Layer 3
-    console.log("  ⏭️ [Layer 2] 需要进一步 AI 分析")
-    return null
+  if (keywordHit && downloadIntent) {
+    return {
+      shouldEscalateToCloud: true,
+      layerHint: "keyword",
+      reason: "keyword-triggered"
+    }
   }
 
-  // No keywords found, likely safe
-  console.log("  ✅ [Layer 2] 未检测到威胁")
+  if (keywordHit && !downloadIntent) {
+    const warnConfidence = Math.max(policy.warningThreshold, 62)
+    return {
+      immediate: buildResult({
+        verdict: "warn",
+        confidence: warnConfidence,
+        reason: "页面疑似冒充受保护软件官网，未发现明确下载入口，请谨慎访问",
+        matchedSoftware: scopedApps[0],
+        matchedBrand: scopedApps[0]?.name,
+        layer: "heuristics",
+        datasetVersion: dataset.datasetVersion
+      }),
+      shouldEscalateToCloud: false,
+      layerHint: "heuristics",
+      reason: "brand-without-download-intent"
+    }
+  }
+
   return {
-    isPhishing: false,
-    confidence: 70,
-    reason: "未检测到敏感关键词",
-    layer: "heuristics",
-    timestamp: Date.now()
+    immediate: buildResult({
+      verdict: resolveVerdictByPolicy(20, policy),
+      confidence: 20,
+      reason: "未发现钓鱼特征",
+      layer: "heuristics",
+      datasetVersion: dataset.datasetVersion
+    }),
+    shouldEscalateToCloud: false,
+    layerHint: "heuristics",
+    reason: "no-signal"
   }
 }
 
 /**
- * Layer 3: AI Semantic Analysis (500ms-2s, async)
- * - Extract DOM content
- * - Send to LLM for analysis
- * - Cache results for 24h
+ * Layer 3: Cloud Semantic Analysis
  */
-export async function layer3AIAnalysis(
+export async function layer3CloudAnalysis(
   url: string,
-  domContent: ExtractedDOMContent
+  domContent: ExtractedDOMContent,
+  layerHint: "heuristics" | "keyword",
+  policy: EffectivePolicy,
+  dataset: OpenDatasetState
 ): Promise<PhishingAnalysisResult> {
-  // Check cache first
   const cached = await getFromCache(url)
   if (cached) {
-    return cached.result
-  }
-
-  // Perform AI analysis
-  const aiResult = await analyzeWithAI(url, domContent)
-
-  // Try to match software from URL, content, or AI's reasoning
-  let matchedSoftware: OfficialSoftware | undefined
-
-  console.log("  🔍 [Layer 3] 开始软件匹配...")
-  console.log("  🔍 [Layer 3] AI 判定理由:", aiResult.reason)
-
-  const { OFFICIAL_SOFTWARE_REGISTRY } = require("../data/officialRegistry")
-
-  // Priority 1: Extract software name from AI's reasoning (most accurate)
-  const reasoning = aiResult.reason.toLowerCase()
-  console.log("  🔍 [Layer 3] 检查 AI 判定理由中的软件名称...")
-  console.log("  🔍 [Layer 3] 判定理由小写:", reasoning)
-
-  for (const software of OFFICIAL_SOFTWARE_REGISTRY) {
-    const nameLower = software.name.toLowerCase()
-    const nameEnLower = software.nameEn.toLowerCase()
-    const nameMatch = reasoning.includes(nameLower)
-    const nameEnMatch = reasoning.includes(nameEnLower)
-
-    if (nameMatch || nameEnMatch) {
-      matchedSoftware = software
-      console.log("  💡 [Layer 3] 从 AI 判定理由中匹配到软件:", software.name)
-      console.log("  💡 [Layer 3] 匹配依据:", nameMatch ? `name="${nameLower}"` : `nameEn="${nameEnLower}"`)
-      break
+    return {
+      ...cached.result,
+      datasetVersion: cached.result.datasetVersion || dataset.datasetVersion
     }
   }
 
-  // Priority 2: Extract from URL
-  if (!matchedSoftware) {
-    const urlLower = url.toLowerCase()
-    for (const software of OFFICIAL_SOFTWARE_REGISTRY) {
-      if (software.officialDomains.some((domain) => urlLower.includes(domain.toLowerCase()))) {
-        matchedSoftware = software
-        console.log("  💡 [Layer 3] 从 URL 中匹配到软件:", software.name)
-        break
-      }
-    }
+  const activation = await getTenantActivation()
+  if (!activation.activated || !activation.token) {
+    const warnConfidence = Math.max(policy.warningThreshold, 62)
+    const fallback = buildResult({
+      verdict: "warn",
+      confidence: warnConfidence,
+      reason: "需企业激活后启用云语义研判，当前仅基于本地规则提示风险",
+      layer: "heuristics",
+      datasetVersion: dataset.datasetVersion
+    })
+    await saveToCache(url, fallback)
+    return fallback
   }
 
-  // Priority 3: Keyword matching (least accurate, use as last resort)
-  if (!matchedSoftware) {
-    const allText = [
+  const brandMatch = matchBrandFromSignals(
+    {
       url,
-      domContent.title,
-      domContent.h1Text
-    ].join(" ").toLowerCase()
+      title: domContent.title,
+      h1Text: domContent.h1Text,
+      buttonTexts: domContent.buttonTexts
+    },
+    dataset.apps
+  )
 
-    console.log("  🔍 [Layer 3] 使用关键词匹配，匹配文本:", allText.substring(0, 200))
-
-    // Score each software by number of matched keywords
-    let bestMatch: OfficialSoftware | undefined
-    let bestScore = 0
-
-    for (const software of OFFICIAL_SOFTWARE_REGISTRY) {
-      const matchedKeywords = software.keywords.filter((kw) => allText.includes(kw.toLowerCase()))
-      const score = matchedKeywords.length
-
-      if (score > bestScore) {
-        bestMatch = software
-        bestScore = score
+  const payload: AnalyzeRequestPayload = {
+    url,
+    host: (() => {
+      try {
+        return new URL(url).host
+      } catch {
+        return ""
       }
-    }
-
-    if (bestMatch && bestScore > 0) {
-      matchedSoftware = bestMatch
-      console.log("  💡 [Layer 3] 关键词匹配到软件:", matchedSoftware.name)
-      console.log("  💡 [Layer 3] 匹配关键词数:", bestScore)
-    }
+    })(),
+    path: (() => {
+      try {
+        return new URL(url).pathname
+      } catch {
+        return "/"
+      }
+    })(),
+    title: domContent.title,
+    h1Text: domContent.h1Text,
+    buttonTexts: domContent.buttonTexts.slice(0, 10),
+    downloadKeywords: domContent.downloadKeywords.slice(0, 10),
+    brandHint: brandMatch.software?.name,
+    layerHint
   }
 
-  if (!matchedSoftware) {
-    console.log("  ⚠️ [Layer 3] 未能匹配到已知软件")
+  try {
+    const cloudDecision = await analyzeWithAI(payload)
+    const verdict =
+      cloudDecision.verdict ||
+      resolveVerdictByPolicy(cloudDecision.confidence, policy)
+
+    const result = buildResult({
+      verdict,
+      confidence: cloudDecision.confidence,
+      reason: cloudDecision.reason,
+      matchedBrand: cloudDecision.matchedBrand || brandMatch.software?.name,
+      matchedSoftware: brandMatch.software,
+      layer: "cloud",
+      modelTraceId: cloudDecision.modelTraceId,
+      source: "cloud",
+      datasetVersion: dataset.datasetVersion
+    })
+
+    await saveToCache(url, result)
+    return result
+  } catch {
+    const fallbackConfidence = Math.max(0, policy.warningThreshold - 5)
+    const fallback = buildResult({
+      verdict: resolveVerdictByPolicy(fallbackConfidence, policy),
+      confidence: fallbackConfidence,
+      reason: "云分析暂不可用，已降级为低风险放行",
+      matchedSoftware: brandMatch.software,
+      matchedBrand: brandMatch.software?.name,
+      layer: "cloud",
+      datasetVersion: dataset.datasetVersion
+    })
+    await saveToCache(url, fallback)
+    return fallback
   }
-
-  const result: PhishingAnalysisResult = {
-    isPhishing: aiResult.isPhishing,
-    confidence: aiResult.confidence,
-    reason: aiResult.reason,
-    matchedSoftware,
-    layer: "ai",
-    timestamp: Date.now()
-  }
-
-  // Cache the result
-  await saveToCache(url, result)
-
-  return result
 }
 
-/**
- * Main orchestration: Three-layer filtering funnel
- */
 export async function analyzePageSecurity(
   url: string,
   domContent?: ExtractedDOMContent,
   pageTitle?: string
 ): Promise<PhishingAnalysisResult> {
-  console.log("\n▶️ [三层过滤] 开始分析")
-  console.log("▶️ [三层过滤] URL:", url)
+  const [policy, dataset] = await Promise.all([
+    getEffectivePolicy(),
+    getCurrentOpenDataset()
+  ])
 
-  // Layer 1: Local match
-  console.log("\n🔍 [Layer 1] 本地匹配检测 (<10ms)")
-  const layer1Result = await layer1LocalMatch(url)
+  const layer1Result = await layer1LocalMatch(url, dataset)
   if (layer1Result) {
-    console.log("✅ [Layer 1] 匹配成功！")
-    console.log("✅ [Layer 1] 结果:", layer1Result.reason)
-    console.log("✅ [Layer 1] 跳过后续分析")
     return layer1Result
   }
-  console.log("⏭️ [Layer 1] 无匹配，进入 Layer 2")
 
-  // Layer 2: Heuristics
-  console.log("\n🔍 [Layer 2] 启发式分析 (<50ms)")
-  const layer2Result = await layer2Heuristics(url, pageTitle)
-
-  // If Layer 2 is confident enough, skip AI
-  if (layer2Result && layer2Result.confidence >= 60) {
-    console.log("⚠️ [Layer 2] 检测到威胁！")
-    console.log("⚠️ [Layer 2] 结果:", layer2Result.reason)
-    console.log("⚠️ [Layer 2] 置信度:", layer2Result.confidence + "%")
-    console.log("⚠️ [Layer 2] 跳过 AI 分析")
-    return layer2Result
+  const layer2Result = await layer2Heuristics(url, pageTitle, policy, dataset)
+  if (layer2Result.immediate) {
+    return layer2Result.immediate
   }
 
-  if (layer2Result) {
-    console.log("⏭️ [Layer 2] 置信度不足 (", layer2Result.confidence + "% < 60%)，进入 Layer 3")
-  } else {
-    console.log("⏭️ [Layer 2] 无明确结论，进入 Layer 3")
+  if (domContent && layer2Result.shouldEscalateToCloud) {
+    return layer3CloudAnalysis(
+      url,
+      domContent,
+      layer2Result.layerHint,
+      policy,
+      dataset
+    )
   }
 
-  // Layer 3: AI Analysis (only if DOM content provided)
-  if (domContent) {
-    console.log("\n🤖 [Layer 3] AI 语义分析 (500ms-2s)")
-    const aiResult = await layer3AIAnalysis(url, domContent)
-    console.log("🤖 [Layer 3] 分析完成")
-    return aiResult
-  }
-
-  // Fallback: insufficient data
-  console.log("⚠️ [三层过滤] DOM 内容不足，无法完成 AI 分析")
-  return {
-    isPhishing: false,
-    confidence: 50,
-    reason: "无法确定安全性（需AI分析）",
+  return buildResult({
+    verdict: "allow",
+    confidence: 30,
+    reason: NEEDS_DOM_REVIEW_REASON,
     layer: "heuristics",
-    timestamp: Date.now()
-  }
+    datasetVersion: dataset.datasetVersion
+  })
 }

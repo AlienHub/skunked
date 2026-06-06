@@ -1,0 +1,12 @@
+name = "skunked-open-data-api"
+main = "src/index.ts"
+compatibility_date = "2026-06-05"
+
+routes = [
+  { pattern = "skunked-open-data.pindo.page", custom_domain = true }
+]
+
+[assets]
+directory = "../open-data/dist-ui"
+binding = "ASSETS"
+not_found_handling = "single-page-application"

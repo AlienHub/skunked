@@ -1,0 +1,22 @@
+{
+  "name": "skunked-open-data",
+  "version": "1.0.0",
+  "private": true,
+  "license": "CC-BY-4.0",
+  "description": "Independent SKUNKED open-data dataset for official apps and confirmed phishing domains",
+  "scripts": {
+    "build": "node ../scripts/build-open-data-manifest.mjs",
+    "ui:dev": "vite --config vite.config.ts",
+    "ui:build": "vite build --config vite.config.ts",
+    "ui:preview": "vite preview --config vite.config.ts",
+    "deploy:pages": "pnpm ui:build && wrangler pages deploy dist-ui --project-name skunked-open-data --branch main",
+    "typecheck": "node -e \"process.exit(0)\"",
+    "lint": "prettier --check \"**/*.{json,md}\"",
+    "test": "node ../scripts/validate-open-data.mjs",
+    "format:check": "prettier --check \"**/*.{json,md}\""
+  },
+  "devDependencies": {
+    "vite": "^7.3.5",
+    "wrangler": "^4.8.0"
+  }
+}

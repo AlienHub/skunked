@@ -1,355 +1,250 @@
-import { useEffect, useState } from "react"
 import "./options.css"
 
-interface AIConfig {
-  provider: "openai" | "anthropic"
-  apiKey: string
-  baseUrl: string
-  model: string
+import { useEffect, useState } from "react"
+
+interface RuntimeInfo {
+  activated: boolean
+  orgId?: string
+  policyVersion?: string
+  queueSize?: number
+  datasetVersion?: string
 }
 
-interface Settings {
-  enableAI: boolean
+interface Policy {
   warningThreshold: number
   blockThreshold: number
+  mode: string
+  brandSignalMode?: string
 }
 
 function IndexOptions() {
-  const [config, setConfig] = useState<AIConfig>({
-    provider: "openai",
-    apiKey: "",
-    baseUrl: "https://api.openai.com/v1",
-    model: "gpt-4o-mini"
+  const [activationCode, setActivationCode] = useState("")
+  const [runtimeInfo, setRuntimeInfo] = useState<RuntimeInfo>({
+    activated: false
   })
-
-  const [settings, setSettings] = useState<Settings>({
-    enableAI: true,
+  const [policy, setPolicy] = useState<Policy>({
     warningThreshold: 60,
-    blockThreshold: 90
+    blockThreshold: 90,
+    mode: "balanced"
   })
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState("")
 
-  const [saved, setSaved] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
+  const load = () => {
+    chrome.runtime.sendMessage({ action: "get_runtime_info" }, (response) => {
+      if (response?.success) {
+        setRuntimeInfo(response.data)
+      }
+    })
+    chrome.storage.local.get("policy", (data) => {
+      if (data.policy?.effective) {
+        setPolicy(data.policy.effective)
+      }
+    })
+  }
 
-  // Load saved config on mount
   useEffect(() => {
-    chrome.storage.local.get(
-      ["aiProvider", "openaiApiKey", "anthropicApiKey", "baseUrl", "modelId", "settings"],
-      (data) => {
-        if (data.aiProvider) {
-          setConfig((prev) => ({ ...prev, provider: data.aiProvider }))
+    load()
+  }, [])
+
+  const activate = () => {
+    if (!activationCode.trim()) {
+      setMessage("请输入激活码")
+      return
+    }
+
+    setBusy(true)
+    setMessage("")
+    chrome.runtime.sendMessage(
+      {
+        action: "activate_tenant",
+        data: {
+          activationCode: activationCode.trim()
         }
-        const apiKey = data.aiProvider === "anthropic" ? data.anthropicApiKey : data.openaiApiKey
-        if (apiKey) {
-          setConfig((prev) => ({ ...prev, apiKey }))
-        }
-        if (data.baseUrl) {
-          setConfig((prev) => ({ ...prev, baseUrl: data.baseUrl }))
-        }
-        if (data.modelId) {
-          setConfig((prev) => ({ ...prev, model: data.modelId }))
-        }
-        if (data.settings) {
-          setSettings(data.settings)
+      },
+      (response) => {
+        setBusy(false)
+        if (response?.success) {
+          setMessage("激活成功，企业策略已生效")
+          setActivationCode("")
+          load()
+        } else {
+          setMessage(response?.error || "激活失败，请检查激活码")
         }
       }
     )
-  }, [])
-
-  const handleSave = async () => {
-    const storageData: any = {
-      aiProvider: config.provider,
-      baseUrl: config.baseUrl,
-      modelId: config.model,
-      settings
-    }
-
-    if (config.provider === "openai") {
-      storageData.openaiApiKey = config.apiKey
-    } else {
-      storageData.anthropicApiKey = config.apiKey
-    }
-
-    await chrome.storage.local.set(storageData)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
   }
 
-  const handleTest = async () => {
-    setTesting(true)
-    setTestResult(null)
-
-    try {
-      const url = config.baseUrl.replace(/\/$/, "") + "/chat/completions"
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${config.apiKey}`
-        },
-        body: JSON.stringify({
-          model: config.model,
-          messages: [
-            {
-              role: "user",
-              content: "测试连接"
-            }
-          ],
-          max_tokens: 10
-        })
-      })
-
-      if (response.ok) {
-        setTestResult({ success: true, message: "✅ 连接成功！API 配置有效" })
+  const syncPolicy = () => {
+    setBusy(true)
+    setMessage("")
+    chrome.runtime.sendMessage({ action: "sync_policy" }, (response) => {
+      setBusy(false)
+      if (response?.success) {
+        setMessage("策略同步成功")
+        load()
       } else {
-        const error = await response.text()
-        setTestResult({ success: false, message: `❌ 连接失败: ${response.status} - ${error.substring(0, 100)}` })
+        setMessage(response?.error || "策略同步失败")
       }
-    } catch (error: any) {
-      setTestResult({ success: false, message: `❌ 连接失败: ${error.message}` })
-    } finally {
-      setTesting(false)
-    }
+    })
   }
 
-  const presets = [
-    {
-      name: "OpenAI 官方",
-      baseUrl: "https://api.openai.com/v1",
-      model: "gpt-4o-mini"
-    },
-    {
-      name: "Azure OpenAI",
-      baseUrl: "https://your-resource.openai.azure.com/openai/deployments/your-deployment",
-      model: "gpt-4o"
-    },
-    {
-      name: "Anthropic",
-      baseUrl: "https://api.anthropic.com",
-      model: "claude-3-haiku-20240307"
-    },
-    {
-      name: "DeepSeek",
-      baseUrl: "https://api.deepseek.com/v1",
-      model: "deepseek-chat"
-    },
-    {
-      name: "通义千问",
-      baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-      model: "qwen-plus"
-    },
-    {
-      name: "智谱 AI",
-      baseUrl: "https://open.bigmodel.cn/api/paas/v4",
-      model: "glm-4-flash"
-    },
-    {
-      name: "Moonshot (Kimi)",
-      baseUrl: "https://api.moonshot.cn/v1",
-      model: "moonshot-v1-8k"
-    }
-  ]
-
-  const applyPreset = (preset: typeof presets[0]) => {
-    setConfig((prev) => ({
-      ...prev,
-      baseUrl: preset.baseUrl,
-      model: preset.model
-    }))
+  const flushReporting = () => {
+    setBusy(true)
+    setMessage("")
+    chrome.runtime.sendMessage({ action: "flush_reporting" }, (response) => {
+      setBusy(false)
+      if (response?.success) {
+        setMessage("上报队列已触发同步")
+        load()
+      } else {
+        setMessage(response?.error || "上报失败")
+      }
+    })
   }
+
+  const syncOpenDataset = () => {
+    setBusy(true)
+    setMessage("")
+    chrome.runtime.sendMessage({ action: "sync_open_dataset" }, (response) => {
+      setBusy(false)
+      if (response?.success) {
+        setMessage("公开数据集同步成功")
+        load()
+      } else {
+        setMessage(response?.error || "公开数据集同步失败")
+      }
+    })
+  }
+
+  const protectionMode = runtimeInfo.activated ? "企业增强防护" : "免费基础防护"
+  const brandSignalLabel =
+    policy.brandSignalMode === "page_signals"
+      ? "URL + 页面文案（企业增强）"
+      : "仅 URL（免费默认）"
 
   return (
-    <div className="options-container">
-      <div className="options-content">
-        <h1>⚙️ 空军 - 反钓鱼卫士配置</h1>
-
-        <section className="config-section">
-          <h2>🤖 AI 配置</h2>
-
-          <div className="form-group">
-            <label>API 提供商</label>
-            <select
-              value={config.provider}
-              onChange={(e) => setConfig({ ...config, provider: e.target.value as "openai" | "anthropic" })}
-            >
-              <option value="openai">OpenAI 兼容接口</option>
-              <option value="anthropic">Anthropic Claude</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label>API Key *</label>
-            <input
-              type="password"
-              value={config.apiKey}
-              onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
-              placeholder="sk-..."
-            />
-            <small>您的 API 密钥将只存储在本地浏览器中</small>
-          </div>
-
-          <div className="form-group">
-            <label>Base URL *</label>
-            <input
-              type="text"
-              value={config.baseUrl}
-              onChange={(e) => setConfig({ ...config, baseUrl: e.target.value })}
-              placeholder="https://api.openai.com/v1"
-            />
-            <small>API 服务的基础 URL</small>
-          </div>
-
-          <div className="form-group">
-            <label>模型 ID *</label>
-            <input
-              type="text"
-              value={config.model}
-              onChange={(e) => setConfig({ ...config, model: e.target.value })}
-              placeholder="gpt-4o-mini"
-            />
-            <small>要使用的模型名称</small>
-          </div>
-
-          <div className="form-group">
-            <label>快速预设</label>
-            <div className="presets">
-              {presets.map((preset) => (
-                <button
-                  key={preset.name}
-                  className="preset-btn"
-                  onClick={() => applyPreset(preset)}
-                >
-                  {preset.name}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="button-group">
-            <button className="btn btn-primary" onClick={handleSave}>
-              💾 保存配置
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={handleTest}
-              disabled={!config.apiKey || !config.baseUrl || testing}
-            >
-              {testing ? "🔄 测试中..." : "🧪 测试连接"}
-            </button>
-          </div>
-
-          {saved && <div className="success-message">✅ 配置已保存！</div>}
-          {testResult && (
-            <div className={`test-result ${testResult.success ? "success" : "error"}`}>
-              {testResult.message}
-            </div>
-          )}
-        </section>
-
-        <section className="config-section">
-          <h2>🎯 检测阈值</h2>
-
-          <div className="form-group">
-            <label>警告阈值: {settings.warningThreshold}%</label>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={settings.warningThreshold}
-              onChange={(e) => setSettings({ ...settings, warningThreshold: Number(e.target.value) })}
-              className="slider"
-            />
-            <small>
-              置信度达到此值时显示黄色警告栏（建议：60%）
-            </small>
-          </div>
-
-          <div className="form-group">
-            <label>拦截阈值: {settings.blockThreshold}%</label>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={settings.blockThreshold}
-              onChange={(e) => setSettings({ ...settings, blockThreshold: Number(e.target.value) })}
-              className="slider"
-            />
-            <small>
-              置信度达到此值时显示红色全屏拦截（建议：90%）
-            </small>
-          </div>
-
-          <div className="form-group checkbox-group">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={settings.enableAI}
-                onChange={(e) => setSettings({ ...settings, enableAI: e.target.checked })}
-              />
-              <span>启用 AI 语义分析</span>
-            </label>
-            <small>
-              关闭后将仅使用本地匹配和启发式分析，可能降低检测准确率
-            </small>
-          </div>
-
-          <button className="btn btn-primary" onClick={handleSave}>
-            💾 保存阈值设置
-          </button>
-        </section>
-
-        <section className="config-section info-section">
-          <h2>📖 使用说明</h2>
-          <ol>
-            <li>
-              <strong>选择 API 提供商</strong>：大多数第三方服务商都兼容 OpenAI 接口，选择
-              "OpenAI 兼容接口"
-            </li>
-            <li>
-              <strong>输入 API Key</strong>：从你的服务商获取 API 密钥
-            </li>
-            <li>
-              <strong>配置 Base URL</strong>：输入服务商的 API 地址，可以从快速预设中选择
-            </li>
-            <li>
-              <strong>设置模型 ID</strong>：输入你要使用的模型名称
-            </li>
-            <li>
-              <strong>测试连接</strong>：点击"测试连接"按钮验证配置是否正确
-            </li>
-            <li>
-              <strong>保存配置</strong>：点击"保存配置"按钮应用设置
-            </li>
-          </ol>
-
-          <h3>推荐的第三方服务商：</h3>
-          <ul>
-            <li>
-              <strong>DeepSeek</strong> -
-              <a href="https://platform.deepseek.com" target="_blank" rel="noopener">
-                https://platform.deepseek.com
-              </a>
-              {" "}（性价比高，支持长文本）
-            </li>
-            <li>
-              <strong>通义千问</strong> -
-              <a href="https://dashscope.aliyuncs.com" target="_blank" rel="noopener">
-                https://dashscope.aliyuncs.com
-              </a>
-              {" "}（阿里云，稳定可靠）
-            </li>
-            <li>
-              <strong>智谱 AI</strong> -
-              <a href="https://open.bigmodel.cn" target="_blank" rel="noopener">
-                https://open.bigmodel.cn
-              </a>
-              {" "}（国产大模型，有免费额度）
-            </li>
-          </ul>
-        </section>
+    <main className="options-root">
+      <div className="hero">
+        <span className="eyebrow">{protectionMode}</span>
+        <h1>SKUNKED 防护设置</h1>
+        <p>
+          插件安装后即可使用本地规则、公开数据集和相似域名检测。企业激活只用于开启云语义研判、组织策略和事件审计。
+        </p>
       </div>
-    </div>
+
+      <section className="panel protection-summary">
+        <div>
+          <h2>基础防护已开启</h2>
+          <p className="caption">
+            无需登录或激活码，也会阻断确认钓鱼域名、识别高仿域名，并引导用户前往官方站点。
+          </p>
+        </div>
+        <div className="summary-grid">
+          <div>
+            <strong>本地规则</strong>
+            <span>官方域 / 黑名单 / 相似域名</span>
+          </div>
+          <div>
+            <strong>公开数据集</strong>
+            <span>{runtimeInfo.datasetVersion || "fallback-local-v1"}</span>
+          </div>
+          <div>
+            <strong>品牌识别</strong>
+            <span>{brandSignalLabel}</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>企业增强</h2>
+        <p className="caption">
+          可选能力：接入企业策略、云端语义研判和事件审计；未激活不影响免费基础防护。
+        </p>
+        <div className="row">
+          <input
+            type="text"
+            value={activationCode}
+            placeholder="输入企业激活码"
+            onChange={(event) => setActivationCode(event.target.value)}
+          />
+          <button disabled={busy} onClick={activate}>
+            {busy
+              ? "处理中..."
+              : runtimeInfo.activated
+                ? "更新绑定"
+                : "开启增强"}
+          </button>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>当前状态</h2>
+        <ul className="status-list">
+          <li>
+            <strong>防护模式：</strong>
+            {protectionMode}
+          </li>
+          <li>
+            <strong>企业绑定：</strong>
+            {runtimeInfo.activated
+              ? `已绑定 (${runtimeInfo.orgId || "未知组织"})`
+              : "未绑定（不影响免费防护）"}
+          </li>
+          <li>
+            <strong>策略版本：</strong>
+            {runtimeInfo.policyVersion || "local-default"}
+          </li>
+          <li>
+            <strong>待上报事件：</strong>
+            {runtimeInfo.queueSize ?? 0}
+          </li>
+          <li>
+            <strong>数据集版本：</strong>
+            {runtimeInfo.datasetVersion || "fallback-local-v1"}
+          </li>
+          <li>
+            <strong>策略模式：</strong>
+            {policy.mode}
+          </li>
+          <li>
+            <strong>品牌识别：</strong>
+            {brandSignalLabel}
+          </li>
+          <li>
+            <strong>阈值：</strong>
+            警告 {policy.warningThreshold}% / 阻断 {policy.blockThreshold}%
+          </li>
+        </ul>
+      </section>
+
+      <section className="panel panel-actions">
+        <button className="secondary" onClick={syncPolicy} disabled={busy}>
+          同步策略
+        </button>
+        <button className="secondary" onClick={flushReporting} disabled={busy}>
+          立即上报事件
+        </button>
+        <button className="secondary" onClick={syncOpenDataset} disabled={busy}>
+          同步公开数据集
+        </button>
+      </section>
+
+      <section className="panel policy-note">
+        <h2>防护说明</h2>
+        <ol>
+          <li>免费版默认启用本地检测，不需要企业账号或 API Key。</li>
+          <li>高风险页面会被阻断，并提供官方站点入口。</li>
+          <li>中等风险仅展示告警，用户可以自行关闭提示。</li>
+          <li>
+            未激活企业时不调用云语义研判；需要云复核的场景会用本地规则降级提醒。
+          </li>
+          <li>企业增强开启后，才会使用组织策略、页面文案识别和事件审计。</li>
+        </ol>
+      </section>
+
+      {message ? <p className="feedback">{message}</p> : null}
+    </main>
   )
 }
 

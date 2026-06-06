@@ -1,15 +1,58 @@
-import { analyzePageSecurity } from "./services/securityEngine"
-import { incrementStats } from "./utils/cache"
-import { PhishingAnalysisResult } from "./types"
+import { CONFIG } from "./constants/config"
+import { OFFICIAL_SOFTWARE_REGISTRY } from "./data/officialRegistry"
+import { activateTenant, pullPolicy } from "./services/cloudClient"
+import {
+  findOfficialUrlByBrand,
+  syncOpenDataset
+} from "./services/openDataset"
+import {
+  createSecurityEvent,
+  enqueueEvent,
+  flushReportingQueue,
+  getQueueSize
+} from "./services/reporting"
+import {
+  analyzePageSecurity,
+  NEEDS_DOM_REVIEW_REASON} from "./services/securityEngine"
+import {
+  createDefaultActivation,
+  createDefaultOpenDatasetState,
+  createDefaultRuntime,
+  DEFAULT_POLICY,
+  DEFAULT_SETTINGS,
+  getEffectivePolicy,
+  getOpenDatasetState,
+  getRuntimeState,
+  getTenantActivation,
+  incrementStats,
+  setEffectivePolicy,
+  setTenantActivation
+} from "./utils/cache"
 
-console.log("空军反钓鱼扩展已启动")
+const REPORTING_ALARM = "skunked-reporting-upload"
+const POLICY_ALARM = "skunked-policy-sync"
+const DATASET_ALARM = "skunked-open-dataset-sync"
 
-// Initialize extension on install
-chrome.runtime.onInstalled.addListener(async () => {
-  console.log("空军 Extension 已安装")
+function safeHost(url: string): string {
+  try {
+    return new URL(url).host
+  } catch {
+    return "unknown"
+  }
+}
 
-  // Initialize storage with default values
+function statusFromVerdict(
+  verdict: "allow" | "warn" | "block"
+): "safe" | "warning" | "blocked" {
+  if (verdict === "block") return "blocked"
+  if (verdict === "warn") return "warning"
+  return "safe"
+}
+
+async function bootstrapStorage() {
   const storage = await chrome.storage.local.get()
+  const version = chrome.runtime.getManifest().version
+
   if (!storage.stats) {
     await chrome.storage.local.set({
       stats: {
@@ -22,184 +65,449 @@ chrome.runtime.onInstalled.addListener(async () => {
   }
 
   if (!storage.blacklist) {
-    await chrome.storage.local.set({
-      blacklist: []
-    })
+    await chrome.storage.local.set({ blacklist: [] })
   }
 
   if (!storage.settings) {
+    await chrome.storage.local.set({ settings: DEFAULT_SETTINGS })
+  }
+
+  if (!storage.runtime?.installationId) {
     await chrome.storage.local.set({
-      settings: {
-        enableAI: true,
-        warningThreshold: 60,
-        blockThreshold: 90,
-        cacheExpiry: 86400000 // 24 hours
+      runtime: createDefaultRuntime(version)
+    })
+  }
+
+  if (!storage.tenant?.activation) {
+    await chrome.storage.local.set({
+      tenant: {
+        activation: createDefaultActivation()
       }
     })
   }
-})
 
-// Listen for page navigation events
-chrome.webNavigation.onCompleted.addListener(
-  async (details) => {
-    // Only analyze main frame (not iframes)
-    if (details.frameId !== 0) return
-
-    // Only analyze http/https pages
-    if (!details.url.startsWith("http")) return
-
-    console.log("页面加载完成:", details.url)
-
-    // Perform security analysis (async, doesn't block page load)
-    analyzePage(details.tabId, details.url)
+  if (!storage.policy?.effective) {
+    await chrome.storage.local.set({
+      policy: {
+        effective: DEFAULT_POLICY
+      }
+    })
   }
-)
 
-// Analyze page security
-async function analyzePage(tabId: number, url: string) {
-  console.log("\n" + "=".repeat(60))
-  console.log("🔍 [页面分析] 开始分析页面")
-  console.log("📍 [页面分析] URL:", url)
-  console.log("🆔 [页面分析] Tab ID:", tabId)
+  if (!storage.reporting?.queue) {
+    await chrome.storage.local.set({
+      reporting: {
+        queue: []
+      }
+    })
+  }
 
+  if (!storage.openDataset?.apps?.length) {
+    await chrome.storage.local.set({
+      openDataset: createDefaultOpenDatasetState()
+    })
+  }
+}
+
+async function ensureAlarms() {
+  await chrome.alarms.create(REPORTING_ALARM, {
+    periodInMinutes: CONFIG.CLOUD_REPORT_UPLOAD_INTERVAL_MINUTES
+  })
+
+  await chrome.alarms.create(POLICY_ALARM, {
+    periodInMinutes: CONFIG.CLOUD_POLICY_SYNC_INTERVAL_MINUTES
+  })
+
+  await chrome.alarms.create(DATASET_ALARM, {
+    periodInMinutes: CONFIG.OPEN_DATASET_SYNC_INTERVAL_MINUTES
+  })
+}
+
+async function syncPolicyFromCloud() {
   try {
-    // Increment total scans
-    await incrementStats("totalScans")
-    console.log("📊 [页面分析] 统计: totalScans +1")
+    const activation = await getTenantActivation()
+    if (!activation.activated || !activation.token) return
 
-    // Get DOM content from content script
-    console.log("📄 [页面分析] 正在提取 DOM 内容...")
-    const response = await chrome.tabs.sendMessage(tabId, {
-      action: "extract_dom"
+    const policy = await pullPolicy()
+    await setEffectivePolicy(policy)
+  } catch (error) {
+    console.warn("policy sync failed", error)
+  }
+}
+
+async function syncOpenDatasetFromCloud(force = false) {
+  try {
+    await syncOpenDataset(force)
+  } catch (error) {
+    console.warn("open dataset sync failed", error)
+  }
+}
+
+async function reportDecisionEvent(input: {
+  url: string
+  verdict: "allow" | "warn" | "block"
+  confidence: number
+  layer: "whitelist" | "blacklist" | "heuristics" | "cloud"
+  reason: string
+  matchedBrand?: string
+  titleDigest?: string
+  h1Digest?: string
+  datasetVersion?: string
+  actionTaken: "auto_blocked" | "shown_warning" | "continued" | "allowed"
+}) {
+  const [runtime, activation] = await Promise.all([
+    getRuntimeState(chrome.runtime.getManifest().version),
+    getTenantActivation()
+  ])
+
+  await enqueueEvent(
+    createSecurityEvent({
+      ts: Date.now(),
+      eventType:
+        input.verdict === "block"
+          ? "blocked"
+          : input.verdict === "warn"
+            ? "warned"
+            : "bypassed",
+      orgId: activation.orgId,
+      installationId: runtime.installationId,
+      urlHost: safeHost(input.url),
+      riskVerdict: input.verdict,
+      confidence: input.confidence,
+      layer: input.layer,
+      actionTaken: input.actionTaken,
+      reason: input.reason,
+      matchedBrand: input.matchedBrand,
+      titleDigest: input.titleDigest,
+      h1Digest: input.h1Digest,
+      datasetVersion: input.datasetVersion
     })
+  )
+}
 
-    if (!response || !response.success) {
-      console.error("❌ [页面分析] DOM 提取失败:", response?.error)
-      return
+async function officialUrlByBrand(brand?: string): Promise<string> {
+  if (!brand) return "#"
+
+  const fromDataset = await findOfficialUrlByBrand(brand)
+  if (fromDataset !== "#") return fromDataset
+
+  const software = OFFICIAL_SOFTWARE_REGISTRY.find(
+    (item) => item.name === brand || item.nameEn === brand
+  )
+
+  if (software?.officialUrls?.[0]) {
+    return software.officialUrls[0]
+  }
+
+  return software?.officialDomains?.[0] ? `https://${software.officialDomains[0]}` : "#"
+}
+
+async function resolveOfficialUrl(result: {
+  matchedSoftware?: { officialUrls?: string[]; officialDomains?: string[] }
+  matchedBrand?: string
+}): Promise<string> {
+  if (result.matchedSoftware?.officialUrls?.[0]) {
+    return result.matchedSoftware.officialUrls[0]
+  }
+
+  if (result.matchedSoftware?.officialDomains?.[0]) {
+    return `https://${result.matchedSoftware.officialDomains[0]}`
+  }
+
+  return officialUrlByBrand(result.matchedBrand)
+}
+
+async function analyzePage(tabId: number, url: string) {
+  try {
+    await incrementStats("totalScans")
+
+    const precheckResult = await analyzePageSecurity(url)
+    let result = precheckResult
+    let domContent: {
+      title?: string
+      h1Text?: string
+    } | undefined
+
+    // Only collect DOM when the URL precheck indicates cloud semantic review is needed.
+    if (precheckResult.reason === NEEDS_DOM_REVIEW_REASON) {
+      const response = await chrome.tabs.sendMessage(tabId, {
+        action: "extract_dom"
+      })
+
+      if (!response?.success) return
+
+      domContent = response.domContent
+      result = await analyzePageSecurity(url, response.domContent, response.domContent?.title)
     }
 
-    console.log("✅ [页面分析] DOM 提取成功")
-    console.log("📝 [页面分析] 页面标题:", response.domContent?.title)
-    console.log("📝 [页面分析] 页面描述:", response.domContent?.metaDescription?.substring(0, 100))
+    const officialUrl = await resolveOfficialUrl(result)
 
-    // Perform three-layer analysis
-    console.log("\n⚙️ [页面分析] 开始三层过滤分析...")
-    const result = await analyzePageSecurity(
-      url,
-      response.domContent,
-      response.domContent?.title
-    )
-
-    console.log("\n" + "─".repeat(60))
-    console.log("📊 [分析结果] ==================")
-    console.log("📊 [分析结果] 是否钓鱼:", result.isPhishing ? "⚠️ 是" : "✅ 否")
-    console.log("📊 [分析结果] 置信度:", result.confidence + "%")
-    console.log("📊 [分析结果] 判定依据:", result.reason)
-    console.log("📊 [分析结果] 分析层级:", result.layer)
-    if (result.matchedSoftware) {
-      console.log("📊 [分析结果] 识别软件:", result.matchedSoftware.name)
-    }
-    console.log("─".repeat(60) + "\n")
-
-    // Update stats based on result
-    if (result.isPhishing) {
-      const settings = await chrome.storage.local.get("settings")
-      const blockThreshold = settings.settings?.blockThreshold || 90
-      const warningThreshold = settings.settings?.warningThreshold || 60
-
-      console.log("🚨 [防护措施] 检测到钓鱼网站")
-      console.log("🚨 [防护措施] 当前置信度:", result.confidence + "%")
-      console.log("🚨 [防护措施] 拦截阈值:", blockThreshold + "%")
-      console.log("🚨 [防护措施] 警告阈值:", warningThreshold + "%")
-
-      if (result.confidence >= blockThreshold) {
-        await incrementStats("phishingBlocked")
-        console.log("🛑 [防护措施] 触发红色全屏覆盖 (90%+)")
-        console.log("🛑 [防护措施] matchedSoftware:", result.matchedSoftware)
-        // Inject red overlay
-        const officialUrl = result.matchedSoftware?.officialDomains[0]
-          ? `https://${result.matchedSoftware.officialDomains[0]}`
-          : "#"
-
-        chrome.tabs.sendMessage(tabId, {
-          action: "inject_overlay",
-          data: {
-            softwareName: result.matchedSoftware?.name || "未知软件",
-            officialUrl,
-            reason: result.reason,
-            confidence: result.confidence
-          }
-        })
-      } else if (result.confidence >= warningThreshold) {
-        await incrementStats("warningShown")
-        console.log("⚠️ [防护措施] 触发黄色警告栏 (60-90%)")
-        console.log("⚠️ [防护措施] matchedSoftware:", result.matchedSoftware)
-        // Inject yellow warning bar
-        const officialUrl = result.matchedSoftware?.officialDomains[0]
-          ? `https://${result.matchedSoftware.officialDomains[0]}`
-          : "#"
-
-        chrome.tabs.sendMessage(tabId, {
-          action: "inject_warning",
-          data: {
-            softwareName: result.matchedSoftware?.name || "未知软件",
-            officialUrl,
-            reason: result.reason,
-            confidence: result.confidence
-          }
-        })
-      } else {
-        console.log("✅ [防护措施] 置信度低于警告阈值，不显示警告")
-      }
+    if (result.verdict === "block") {
+      await incrementStats("phishingBlocked")
+      await chrome.tabs.sendMessage(tabId, {
+        action: "inject_overlay",
+        data: {
+          softwareName: result.matchedBrand || "未知软件",
+          officialUrl,
+          reason: result.reason,
+          confidence: result.confidence,
+          datasetVersion: result.datasetVersion
+        }
+      })
+    } else if (result.verdict === "warn") {
+      await incrementStats("warningShown")
+      await chrome.tabs.sendMessage(tabId, {
+        action: "inject_warning",
+        data: {
+          softwareName: result.matchedBrand || "可疑站点",
+          officialUrl,
+          reason: result.reason,
+          confidence: result.confidence,
+          datasetVersion: result.datasetVersion
+        }
+      })
     } else {
       await incrementStats("officialVerified")
-      console.log("✅ [防护措施] 页面安全，已认证")
     }
 
-    // Save result for popup access
     await chrome.storage.local.set({
       [`analysis_${tabId}`]: {
-        status: result.isPhishing
-          ? result.confidence >= 90
-            ? "blocked"
-            : "warning"
-          : "safe",
+        status: statusFromVerdict(result.verdict),
         result
       }
     })
 
-    console.log("💾 [存储] 分析结果已保存到 storage")
-    console.log("=".repeat(60) + "\n")
+    await reportDecisionEvent({
+      url,
+      verdict: result.verdict,
+      confidence: result.confidence,
+      layer: result.layer,
+      reason: result.reason,
+      matchedBrand: result.matchedBrand,
+      titleDigest: domContent?.title,
+      h1Digest: domContent?.h1Text,
+      datasetVersion: result.datasetVersion,
+      actionTaken:
+        result.verdict === "block"
+          ? "auto_blocked"
+          : result.verdict === "warn"
+            ? "shown_warning"
+            : "allowed"
+    })
   } catch (error) {
-    console.error("❌ [页面分析] 分析失败:", error)
+    console.error("analyze page failed", error)
   }
 }
 
-// Listen for messages from content scripts and popup
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log("收到消息:", request)
+chrome.runtime.onInstalled.addListener(async () => {
+  await bootstrapStorage()
+  await ensureAlarms()
+  await syncOpenDatasetFromCloud(true)
+})
 
+chrome.runtime.onStartup.addListener(async () => {
+  await bootstrapStorage()
+  await ensureAlarms()
+  await syncOpenDatasetFromCloud(true)
+})
+
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name === REPORTING_ALARM) {
+    await flushReportingQueue()
+  }
+  if (alarm.name === POLICY_ALARM) {
+    await syncPolicyFromCloud()
+  }
+  if (alarm.name === DATASET_ALARM) {
+    await syncOpenDatasetFromCloud(true)
+  }
+})
+
+chrome.webNavigation.onCompleted.addListener(async (details) => {
+  if (details.frameId !== 0) return
+  if (!details.url.startsWith("http")) return
+  analyzePage(details.tabId, details.url)
+})
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "get_page_status") {
-    // Return saved analysis result for current tab
-    if (sender.tab?.id) {
-      chrome.storage.local.get(`analysis_${sender.tab.id}`, (data) => {
-        const result = data[`analysis_${sender.tab.id}`]
-        sendResponse(result || { status: "pending" })
-      })
-      return true
-    }
+    const tabId = sender.tab?.id
+    if (!tabId) return false
+
+    chrome.storage.local.get(`analysis_${tabId}`, (data) => {
+      sendResponse(data[`analysis_${tabId}`] || { status: "pending" })
+    })
+    return true
   }
 
-  if (request.action === "report_phishing") {
-    // User reported a phishing site
-    chrome.storage.local.get("blacklist", async (data) => {
-      const blacklist = data.blacklist || []
-      if (!blacklist.includes(request.url)) {
-        blacklist.push(request.url)
-        await chrome.storage.local.set({ blacklist })
+  if (request.action === "activate_tenant") {
+    ;(async () => {
+      try {
+        const runtime = await getRuntimeState(chrome.runtime.getManifest().version)
+        const activationResult = await activateTenant(
+          request.data.activationCode,
+          runtime.installationId
+        )
+        await setTenantActivation(activationResult.activation)
+        if (activationResult.policy) {
+          await setEffectivePolicy(activationResult.policy)
+        }
+        sendResponse({
+          success: true,
+          data: {
+            activated: true,
+            orgId: activationResult.activation.orgId,
+            policyVersion: activationResult.policy?.policyVersion
+          }
+        })
+      } catch (error) {
+        sendResponse({
+          success: false,
+          error: error instanceof Error ? error.message : "激活失败"
+        })
       }
+    })()
+    return true
+  }
+
+  if (request.action === "sync_policy") {
+    ;(async () => {
+      try {
+        await syncPolicyFromCloud()
+        const policy = await getEffectivePolicy()
+        sendResponse({
+          success: true,
+          data: {
+            activated: true,
+            policyVersion: policy.policyVersion
+          }
+        })
+      } catch (error) {
+        sendResponse({
+          success: false,
+          error: error instanceof Error ? error.message : "同步失败"
+        })
+      }
+    })()
+    return true
+  }
+
+  if (request.action === "sync_open_dataset") {
+    ;(async () => {
+      try {
+        await syncOpenDatasetFromCloud(true)
+        const openDataset = await getOpenDatasetState()
+        sendResponse({
+          success: true,
+          data: {
+            activated: true,
+            datasetVersion: openDataset.datasetVersion
+          }
+        })
+      } catch (error) {
+        sendResponse({
+          success: false,
+          error: error instanceof Error ? error.message : "数据集同步失败"
+        })
+      }
+    })()
+    return true
+  }
+
+  if (request.action === "flush_reporting") {
+    ;(async () => {
+      try {
+        const result = await flushReportingQueue()
+        sendResponse({
+          success: true,
+          data: {
+            activated: true,
+            queueSize: result.remaining
+          }
+        })
+      } catch (error) {
+        sendResponse({
+          success: false,
+          error: error instanceof Error ? error.message : "上报失败"
+        })
+      }
+    })()
+    return true
+  }
+
+  if (request.action === "get_runtime_info") {
+    ;(async () => {
+      const [activation, policy, queueSize, openDataset] = await Promise.all([
+        getTenantActivation(),
+        getEffectivePolicy(),
+        getQueueSize(),
+        getOpenDatasetState()
+      ])
+
+      sendResponse({
+        success: true,
+        data: {
+          activated: activation.activated,
+          orgId: activation.orgId,
+          policyVersion: policy.policyVersion,
+          queueSize,
+          datasetVersion: openDataset.datasetVersion
+        }
+      })
+    })()
+    return true
+  }
+
+  if (request.action === "report_false_positive") {
+    ;(async () => {
+      const runtime = await getRuntimeState(chrome.runtime.getManifest().version)
+      const [activation, openDataset] = await Promise.all([
+        getTenantActivation(),
+        getOpenDatasetState()
+      ])
+      await enqueueEvent(
+        createSecurityEvent({
+          ts: Date.now(),
+          eventType: "false_positive_feedback",
+          orgId: activation.orgId,
+          installationId: runtime.installationId,
+          urlHost: safeHost(request.data.url),
+          riskVerdict: "warn",
+          confidence: 0,
+          layer: "heuristics",
+          actionTaken: "continued",
+          reason: request.data.reason || "用户上报误报",
+          datasetVersion: openDataset.datasetVersion
+        })
+      )
       sendResponse({ success: true })
-    })
+    })()
+    return true
+  }
+
+  if (request.action === "risk_bypassed") {
+    ;(async () => {
+      const runtime = await getRuntimeState(chrome.runtime.getManifest().version)
+      const activation = await getTenantActivation()
+      const currentUrl = sender.tab?.url || ""
+      await enqueueEvent(
+        createSecurityEvent({
+          ts: Date.now(),
+          eventType: "bypassed",
+          orgId: activation.orgId,
+          installationId: runtime.installationId,
+          urlHost: safeHost(currentUrl),
+          riskVerdict: "warn",
+          confidence: Number(request.data?.confidence || 0),
+          layer: "cloud",
+          actionTaken: "continued",
+          reason: request.data?.reason || "用户继续访问风险页面",
+          matchedBrand: request.data?.softwareName,
+          datasetVersion: request.data?.datasetVersion
+        })
+      )
+      sendResponse({ success: true })
+    })()
     return true
   }
 

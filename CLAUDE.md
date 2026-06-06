@@ -20,6 +20,11 @@ pnpm build
 
 # Create distributable ZIP packages
 pnpm package
+
+# ESLint (flat config) and unit tests
+pnpm lint
+pnpm test
+pnpm test:watch
 ```
 
 **Loading the extension in development:**

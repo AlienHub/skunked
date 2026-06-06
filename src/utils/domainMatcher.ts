@@ -1,5 +1,5 @@
+import { getAllKeywords, getAllOfficialDomains } from "../data/officialRegistry"
 import { DomainMatchResult } from "../types"
-import { getAllOfficialDomains } from "../data/officialRegistry"
 
 /**
  * Calculate Levenshtein distance between two strings
@@ -10,7 +10,6 @@ export function levenshteinDistance(str1: string, str2: string): number {
   const len2 = str2.length
   const matrix: number[][] = []
 
-  // Initialize matrix
   for (let i = 0; i <= len1; i++) {
     matrix[i] = [i]
   }
@@ -18,14 +17,13 @@ export function levenshteinDistance(str1: string, str2: string): number {
     matrix[0][j] = j
   }
 
-  // Fill matrix
   for (let i = 1; i <= len1; i++) {
     for (let j = 1; j <= len2; j++) {
       const cost = str1[i - 1] === str2[j - 1] ? 0 : 1
       matrix[i][j] = Math.min(
-        matrix[i - 1][j] + 1, // deletion
-        matrix[i][j - 1] + 1, // insertion
-        matrix[i - 1][j - 1] + cost // substitution
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost
       )
     }
   }
@@ -39,9 +37,7 @@ export function levenshteinDistance(str1: string, str2: string): number {
  */
 export function extractDomain(url: string): string {
   try {
-    // Remove protocol
     let domain = url.replace(/^https?:\/\//, "").replace(/^www\./, "")
-    // Remove port and path
     domain = domain.split("/")[0].split(":")[0]
     return domain
   } catch {
@@ -49,14 +45,24 @@ export function extractDomain(url: string): string {
   }
 }
 
+export function isSameOrSubdomain(host: string, domain: string): boolean {
+  const normalizedHost = extractDomain(host).toLowerCase()
+  const normalizedDomain = extractDomain(domain).toLowerCase()
+
+  return (
+    normalizedHost === normalizedDomain ||
+    normalizedHost.endsWith(`.${normalizedDomain}`)
+  )
+}
+
 /**
  * Check if domain matches any official domain exactly
  */
-export function isOfficialDomain(domain: string): boolean {
+export function isOfficialDomain(domain: string, officialDomains?: string[]): boolean {
   const normalizedDomain = extractDomain(domain).toLowerCase()
-  const officialDomains = getAllOfficialDomains()
+  const candidates = officialDomains?.length ? officialDomains : getAllOfficialDomains()
 
-  return officialDomains.some((official) => {
+  return candidates.some((official) => {
     const normalizedOfficial = official.toLowerCase()
     return (
       normalizedDomain === normalizedOfficial ||
@@ -68,16 +74,18 @@ export function isOfficialDomain(domain: string): boolean {
 /**
  * Check if domain is suspiciously similar to official domains
  */
-export function checkDomainSimilarity(domain: string): DomainMatchResult | null {
+export function checkDomainSimilarity(
+  domain: string,
+  officialDomains?: string[]
+): DomainMatchResult | null {
   const normalizedDomain = extractDomain(domain).toLowerCase()
-  const officialDomains = getAllOfficialDomains()
+  const candidates = officialDomains?.length ? officialDomains : getAllOfficialDomains()
 
-  for (const officialDomain of officialDomains) {
+  for (const officialDomain of candidates) {
     const distance = levenshteinDistance(normalizedDomain, officialDomain)
     const maxLength = Math.max(normalizedDomain.length, officialDomain.length)
     const similarity = 1 - distance / maxLength
 
-    // Threshold: if similarity > 0.7 (70%) and not exact match
     if (similarity > 0.7 && similarity < 1.0) {
       return {
         isSimilar: true,
@@ -94,30 +102,31 @@ export function checkDomainSimilarity(domain: string): DomainMatchResult | null 
 /**
  * Check for common typosquatting patterns
  */
-export function detectTyposquattingPatterns(domain: string): boolean {
-  const normalizedDomain = domain.toLowerCase()
+export function detectTyposquattingPatterns(
+  domain: string,
+  options: { includeGenericPatterns?: boolean } = {}
+): boolean {
+  const normalizedDomain = extractDomain(domain).toLowerCase()
+  const includeGenericPatterns = options.includeGenericPatterns ?? true
 
-  const patterns = [
-    // Character substitution
+  const brandPatterns = [
     /fe1shu/,
     /d1ngtalk/,
     /wps-vip/,
-    // Prefix patterns (e.g., desktop-wps.com)
     /^(desktop|pc|mobile|download|free|vip|official)-wps/,
     /^(desktop|pc|mobile|download|free|vip|official)-feishu/,
     /^(desktop|pc|mobile|download|free|vip|official)-dingtalk/,
-    // Extra words
     /feishu-download/,
     /dingtalk-vip/,
     /wps-download/,
-    // Hyphenation
     /fei-shu/,
     /ding-talk/,
-    // Numbers at end
     /feishu\d+/,
     /dingtalk\d+/,
-    /wps\d+/,
-    // Common phishing patterns
+    /wps\d+/
+  ]
+
+  const genericPatterns = [
     /-download\./,
     /-vip\./,
     /-free\./,
@@ -131,6 +140,10 @@ export function detectTyposquattingPatterns(domain: string): boolean {
     /\.club$/,
     /\.site$/
   ]
+
+  const patterns = includeGenericPatterns
+    ? [...brandPatterns, ...genericPatterns]
+    : brandPatterns
 
   return patterns.some((pattern) => pattern.test(normalizedDomain))
 }
@@ -146,7 +159,7 @@ export function isSearchEngine(url: string): boolean {
     "google.com",
     "google.com.hk",
     "sogou.com",
-    "so.com", // 360搜索
+    "so.com",
     "yahoo.com",
     "duckduckgo.com",
     "yandex.com",
@@ -161,15 +174,16 @@ export function isSearchEngine(url: string): boolean {
 /**
  * Check if URL contains sensitive keywords
  */
-export function containsSensitiveKeywords(url: string, pageTitle?: string): boolean {
-  // Skip check if it's a search engine
+export function containsSensitiveKeywords(
+  url: string,
+  pageTitle?: string,
+  keywords?: string[]
+): boolean {
   if (isSearchEngine(url)) {
-    console.log("  🔍 [关键词检测] 搜索引擎页面，跳过关键词检测")
     return false
   }
 
-  const { getAllKeywords } = require("../data/officialRegistry")
-  const allKeywords = getAllKeywords()
+  const allKeywords = keywords?.length ? keywords : getAllKeywords()
   const urlLower = url.toLowerCase()
   const titleLower = (pageTitle || "").toLowerCase()
 

@@ -1,13 +1,40 @@
 {
-  "name": "kongjun-extension",
-  "displayName": "空军 - 反钓鱼卫士",
-  "version": "0.1.0",
-  "description": "基于AI语义分析的主动防御型反钓鱼工具，专注对抗针对性SEO投毒",
+  "name": "skunked-extension",
+  "displayName": "SKUNKED - 反钓鱼卫士",
+  "version": "1.0.0",
+  "description": "基于 AI 语义分析的主动防御型反钓鱼工具，专注对抗针对性 SEO 投毒",
+  "license": "Apache-2.0",
   "author": "",
   "scripts": {
+    "gen:snapshot": "node scripts/gen-offline-snapshot.mjs",
+    "predev": "pnpm gen:snapshot",
     "dev": "plasmo dev",
+    "dev:worker": "pnpm --filter skunked-cloud-api dev",
+    "dev:site": "pnpm --filter skunked-site dev",
+    "dev:open-data": "pnpm --filter skunked-open-data ui:dev",
+    "dev:open-data-api": "pnpm --filter skunked-open-data-api dev",
+    "prebuild": "pnpm gen:snapshot",
     "build": "plasmo build",
-    "package": "plasmo package"
+    "build:all": "pnpm build && pnpm -r build",
+    "package": "plasmo package",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "typecheck:all": "pnpm typecheck && pnpm -r typecheck",
+    "lint": "eslint \"src/**/*.{ts,tsx}\" \"cloudflare-worker/src/**/*.ts\"",
+    "lint:all": "pnpm lint && pnpm -r lint",
+    "lint:fix": "eslint \"src/**/*.{ts,tsx}\" \"cloudflare-worker/src/**/*.ts\" --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"cloudflare-worker/src/**/*.ts\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:open-data": "pnpm --filter skunked-open-data test",
+    "test:all": "pnpm test && pnpm test:open-data && pnpm -r test",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
+    "format:check:all": "pnpm format:check && pnpm -r format:check",
+    "open-data:validate": "pnpm --filter skunked-open-data test",
+    "open-data:build": "pnpm --filter skunked-open-data build",
+    "open-data:ui:build": "pnpm --filter skunked-open-data ui:build",
+    "open-data:api:build": "pnpm --filter skunked-open-data-api build",
+    "deploy:open-data": "pnpm --filter skunked-open-data ui:build && pnpm --filter skunked-open-data-api run deploy",
+    "deploy:open-data:pages": "pnpm --filter skunked-open-data deploy:pages"
   },
   "dependencies": {
     "plasmo": "^0.90.5",
@@ -15,12 +42,18 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.1",
     "@types/chrome": "^0.0.277",
     "@types/node": "^22.10.5",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
     "prettier": "^3.4.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.46.4",
+    "vitest": "^3.2.4"
   },
   "manifest": {
     "host_permissions": [
@@ -30,7 +63,8 @@
     "permissions": [
       "webNavigation",
       "storage",
-      "tabs"
+      "tabs",
+      "alarms"
     ]
   }
 }

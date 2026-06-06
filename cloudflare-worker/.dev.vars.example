@@ -1,0 +1,5 @@
+# Copy to `.dev.vars` for local `wrangler dev` (never commit `.dev.vars`).
+# Production secrets: `wrangler secret put <NAME>`
+
+MODEL_API_KEY=your-model-provider-api-key
+INTERNAL_EXPORT_KEY=your-internal-export-key

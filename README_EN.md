@@ -1,127 +1,77 @@
-# 🛡️ Skunked - Anti-Phishing Guardian
+# SKUNKED Enterprise Anti-Phishing Extension
 
-> AI-powered proactive defense browser extension against SEO poisoning attacks
+SKUNKED is a Chrome extension for enterprise phishing defense. It starts working immediately after installation without requiring end users to configure model keys.
 
-[![Chrome Web Store](https://img.shields.io/badge/Chrome-Extension-blue?logo=google-chrome)](https://chrome.google.com/webstore)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+## MVP Highlights
 
-English | [简体中文](./README.md)
+- Accurate detection via local multi-layer checks and cloud semantic analysis.
+- Async performance-first flow (non-blocking page analysis).
+- Calm UX: hard block for high risk, warning for uncertain risk.
+- Enterprise operations: activation code binding, event reporting, and export API.
+- Dataset-driven detection: open dataset updates without frequent extension releases.
+- Independent open-data service for public official app and confirmed phishing data.
 
-## 🎯 Background
+## Detection Pipeline
 
-Cybercriminal groups like "Silverfox" purchase search engine keywords (SEO poisoning) to create fake download pages for popular software such as Feishu, DingTalk, WPS, and QQ. These phishing pages look nearly identical to official websites, and their domains change constantly, making traditional blacklist-based protection ineffective.
+1. Local whitelist/blacklist checks.
+2. Heuristic checks for domain similarity and typosquatting.
+3. Cloud semantic decision with unified schema:
+   - `verdict`: `allow | warn | block`
+   - `confidence`: `0-100`
+   - `reason`: short explanation
+   - `modelTraceId?`, `matchedBrand?`
+4. Open dataset sync from the independent public Open Data API (startup + every
+   6 hours) with local fallback snapshot.
 
-**Skunked's Mission**: One discovers, everyone is immune 🦨
+## Repository Layout
 
-## ✨ Key Features
+```txt
+src/                # Extension code
+open-data/          # Independent public dataset source files
+cloudflare-worker/  # Enterprise cloud API implementation
+site/               # Landing + dataset browser (static)
+docs/               # Deployment/privacy/cloud/open-data API docs
+```
 
-### 🚀 Three-Layer Funnel Protection Architecture
-
-| Layer | Technology | Latency |
-|-------|------------|---------|
-| **Layer 1** | Local whitelist/blacklist matching | < 10ms |
-| **Layer 2** | Feature engineering & heuristic analysis | < 50ms |
-| **Layer 3** | AI semantic analysis | Async |
-
-### 🔒 Privacy-First Design
-
-- **Local Priority**: Core matching logic runs entirely locally
-- **Data Minimization**: Only upload minimal information when necessary
-- **No Tracking**: Does not record normal browsing behavior
-
-### 🎨 Smart Intervention UI
-
-- **High Risk**: Full-screen red overlay with official site redirect
-- **Medium Risk**: Yellow warning bar at top
-- **Verified Safe**: Green badge for official websites
-
-## 📦 Installation
-
-### Build from Source
+## Open Dataset Commands
 
 ```bash
-# Clone the repository
-git clone git@github.com:AlienHub/skunked.git
-cd skunked
+pnpm open-data:validate
+pnpm open-data:build
+```
 
-# Install dependencies
+## Local Development
+
+```bash
 pnpm install
-
-# Development mode
 pnpm dev
-
-# Production build
+pnpm dev:worker   # optional: cloud API
+pnpm dev:site     # optional: static site
 pnpm build
+pnpm typecheck:all
+pnpm test
 ```
 
-### Load Extension
+Load unpacked extension from `build/chrome-mv3-dev`.
 
-1. Open Chrome browser and navigate to `chrome://extensions`
-2. Enable "Developer mode"
-3. Click "Load unpacked"
-4. Select the `build/chrome-mv3-dev` directory
+## Worker Setup (Optional)
 
-## 🏗️ Project Structure
-
-```
-skunked/
-├── src/
-│   ├── background.ts      # Background service worker
-│   ├── content.ts         # Content script
-│   ├── popup.tsx          # Popup page
-│   ├── options.tsx        # Options page
-│   ├── components/        # UI components
-│   ├── services/          # Core services
-│   │   ├── ai-engine.ts   # AI analysis engine
-│   │   └── ...
-│   ├── data/              # Software registry data
-│   └── utils/             # Utility functions
-├── assets/                # Static assets
-└── package.json
+```bash
+cd cloudflare-worker
+pnpm install
+pnpm dev
 ```
 
-## 🛠️ Tech Stack
+Configure Worker secrets and bindings before deployment.
 
-- **Framework**: [Plasmo](https://docs.plasmo.com/) - Modern browser extension development framework
-- **Frontend**: React 18 + TypeScript
-- **Build**: Plasmo Build System
-- **AI**: Supports Gemini / OpenAI API integration
+## Docs
 
-## 🎯 Protected Software
+- [Enterprise deployment guide](./docs/enterprise-deployment.md)
+- [Cloud API reference](./docs/cloud-api.md)
+- [Open Data API reference](./docs/open-data-api.md)
+- [Privacy policy](./docs/privacy-policy.md)
+- [Open dataset contribution guide](./CONTRIBUTING_DATASET.md)
 
-Current version supports detection of the following commonly spoofed software:
+## License
 
-| Software | Official Domain |
-|----------|-----------------|
-| Feishu | feishu.cn, larksuite.com |
-| DingTalk | dingtalk.com |
-| WeChat | weixin.qq.com |
-| WPS | wps.cn |
-| Sunlogin | oray.com |
-| ToDesk | todesk.com |
-| Tencent Meeting | meeting.tencent.com |
-
-## 🤝 Contributing
-
-Issues and Pull Requests are welcome!
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
-
-## 🔗 Resources
-
-- [Plasmo Documentation](https://docs.plasmo.com/)
-- [Chrome Extension Documentation](https://developer.chrome.com/docs/extensions/)
-
----
-
-<p align="center">
-  <strong>🦨 Skunked - Making phishers nowhere to hide</strong>
-</p>
+Code is licensed under [Apache License 2.0](./LICENSE). Open dataset is licensed under [CC BY 4.0](./open-data/LICENSE.md).
