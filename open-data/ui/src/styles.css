@@ -87,16 +87,6 @@ a {
   letter-spacing: 0;
 }
 
-.brand-mark {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  color: #ffffff;
-  background: var(--ink);
-  border-radius: 6px;
-}
-
 .topbar nav a {
   padding: 8px 10px;
   color: var(--muted);
@@ -105,21 +95,6 @@ a {
 
 .topbar nav a:hover {
   color: var(--ink);
-}
-
-.command-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 3px 6px;
-  color: var(--muted);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-}
-
-kbd {
-  font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 12px;
 }
 
 main {
@@ -324,23 +299,11 @@ code {
 .search-box {
   display: flex;
   align-items: center;
-  gap: 10px;
   min-height: 48px;
-  padding: 0 14px;
+  padding: 0 16px;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 10px;
-}
-
-.search-box span {
-  display: grid;
-  width: 24px;
-  height: 24px;
-  place-items: center;
-  color: #ffffff;
-  background: var(--ink);
-  border-radius: 6px;
-  font-weight: 800;
 }
 
 .search-box input {
@@ -462,23 +425,7 @@ code {
 }
 
 .app-main {
-  display: flex;
-  align-items: center;
-  gap: 14px;
   min-width: 0;
-}
-
-.app-initial {
-  display: grid;
-  flex: 0 0 auto;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  color: #ffffff;
-  background: var(--ink);
-  border-radius: 8px;
-  font-size: 19px;
-  font-weight: 800;
 }
 
 .app-main h3 {
