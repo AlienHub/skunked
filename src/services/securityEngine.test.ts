@@ -12,7 +12,7 @@ import {
   getTenantActivation,
   saveToCache
 } from "../utils/cache"
-import { analyzeWithAI } from "./aiAnalyzer"
+import { analyzeWithAI, hasLocalModelConfig } from "./aiAnalyzer"
 import {
   layer1LocalMatch,
   layer2Heuristics,
@@ -21,7 +21,8 @@ import {
 } from "./securityEngine"
 
 vi.mock("./aiAnalyzer", () => ({
-  analyzeWithAI: vi.fn()
+  analyzeWithAI: vi.fn(),
+  hasLocalModelConfig: vi.fn()
 }))
 
 vi.mock("../utils/cache", async (importOriginal) => {
@@ -55,6 +56,7 @@ describe("securityEngine layers", () => {
       activated: true,
       token: "test-token"
     })
+    vi.mocked(hasLocalModelConfig).mockResolvedValue(false)
     vi.mocked(analyzeWithAI).mockReset()
   })
 
@@ -173,6 +175,25 @@ describe("securityEngine layers", () => {
       expect(result.reason).toBe("brand-without-download-intent")
     })
 
+    it("uses DOM button text as download intent", async () => {
+      const result = await layer2Heuristics(
+        "https://fake-feishu.example/about",
+        "飞书产品介绍",
+        TEST_POLICY,
+        TEST_DATASET,
+        {
+          ...domContent,
+          title: "飞书产品介绍",
+          buttonTexts: ["个人版免费下载", "企业版免费试用"],
+          downloadKeywords: ["下载", "免费"]
+        }
+      )
+
+      expect(result.immediate).toBeUndefined()
+      expect(result.shouldEscalateToCloud).toBe(true)
+      expect(result.reason).toBe("keyword-triggered")
+    })
+
     it("skips page-title-only brand signals under url_only policy", async () => {
       const result = await layer2Heuristics(
         "https://neutral-cdn.example/landing",
@@ -195,6 +216,18 @@ describe("securityEngine layers", () => {
 
       expect(result.shouldEscalateToCloud).toBe(true)
       expect(result.layerHint).toBe("keyword")
+    })
+
+    it("requests page signals before allowing unknown URLs in page_signals mode", async () => {
+      const result = await layer2Heuristics(
+        "https://neutral-cdn.example/landing",
+        undefined,
+        TEST_POLICY_PAGE_SIGNALS,
+        TEST_DATASET
+      )
+
+      expect(result.immediate).toBeUndefined()
+      expect(result.reason).toBe("needs-page-signals")
     })
   })
 
@@ -247,7 +280,7 @@ describe("securityEngine layers", () => {
       expect(saveToCache).toHaveBeenCalledWith(domContent.url, result)
     })
 
-    it("warns instead of calling cloud when tenant is not activated", async () => {
+    it("warns instead of calling cloud or local model when no model is configured", async () => {
       vi.mocked(getTenantActivation).mockResolvedValueOnce({
         activated: false
       })
@@ -261,9 +294,34 @@ describe("securityEngine layers", () => {
       )
 
       expect(result.verdict).toBe("warn")
-      expect(result.reason).toContain("企业激活")
+      expect(result.reason).toContain("本地规则提示风险")
       expect(analyzeWithAI).not.toHaveBeenCalled()
       expect(saveToCache).toHaveBeenCalled()
+    })
+
+    it("uses local model config without tenant activation", async () => {
+      vi.mocked(getTenantActivation).mockResolvedValueOnce({
+        activated: false
+      })
+      vi.mocked(hasLocalModelConfig).mockResolvedValueOnce(true)
+      vi.mocked(analyzeWithAI).mockResolvedValueOnce({
+        verdict: "block",
+        confidence: 95,
+        reason: "本地模型判定钓鱼",
+        matchedBrand: "飞书"
+      })
+
+      const result = await layer3CloudAnalysis(
+        domContent.url,
+        domContent,
+        "keyword",
+        TEST_POLICY,
+        TEST_DATASET
+      )
+
+      expect(result.verdict).toBe("block")
+      expect(result.source).toBe("local")
+      expect(analyzeWithAI).toHaveBeenCalled()
     })
 
     it("degrades gracefully when cloud analysis fails", async () => {

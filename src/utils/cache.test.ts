@@ -6,6 +6,7 @@ import {
   createDefaultOpenDatasetState,
   createDefaultRuntime,
   getCacheKey,
+  getEffectivePolicy,
   getFromCache,
   getSettings,
   saveToCache
@@ -102,5 +103,10 @@ describe("cache", () => {
   it("falls back to default settings when storage is empty", async () => {
     const settings = await getSettings()
     expect(settings.cacheExpiry).toBeGreaterThan(0)
+  })
+
+  it("uses page signals in the default local policy", async () => {
+    const policy = await getEffectivePolicy()
+    expect(policy.brandSignalMode).toBe("page_signals")
   })
 })

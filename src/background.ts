@@ -1,10 +1,7 @@
 import { CONFIG } from "./constants/config"
 import { OFFICIAL_SOFTWARE_REGISTRY } from "./data/officialRegistry"
 import { activateTenant, pullPolicy } from "./services/cloudClient"
-import {
-  findOfficialUrlByBrand,
-  syncOpenDataset
-} from "./services/openDataset"
+import { findOfficialUrlByBrand, syncOpenDataset } from "./services/openDataset"
 import {
   createSecurityEvent,
   enqueueEvent,
@@ -13,7 +10,8 @@ import {
 } from "./services/reporting"
 import {
   analyzePageSecurity,
-  NEEDS_DOM_REVIEW_REASON} from "./services/securityEngine"
+  NEEDS_DOM_REVIEW_REASON
+} from "./services/securityEngine"
 import {
   createDefaultActivation,
   createDefaultOpenDatasetState,
@@ -199,7 +197,9 @@ async function officialUrlByBrand(brand?: string): Promise<string> {
     return software.officialUrls[0]
   }
 
-  return software?.officialDomains?.[0] ? `https://${software.officialDomains[0]}` : "#"
+  return software?.officialDomains?.[0]
+    ? `https://${software.officialDomains[0]}`
+    : "#"
 }
 
 async function resolveOfficialUrl(result: {
@@ -223,10 +223,12 @@ async function analyzePage(tabId: number, url: string) {
 
     const precheckResult = await analyzePageSecurity(url)
     let result = precheckResult
-    let domContent: {
-      title?: string
-      h1Text?: string
-    } | undefined
+    let domContent:
+      | {
+          title?: string
+          h1Text?: string
+        }
+      | undefined
 
     // Only collect DOM when the URL precheck indicates cloud semantic review is needed.
     if (precheckResult.reason === NEEDS_DOM_REVIEW_REASON) {
@@ -237,7 +239,11 @@ async function analyzePage(tabId: number, url: string) {
       if (!response?.success) return
 
       domContent = response.domContent
-      result = await analyzePageSecurity(url, response.domContent, response.domContent?.title)
+      result = await analyzePageSecurity(
+        url,
+        response.domContent,
+        response.domContent?.title
+      )
     }
 
     const officialUrl = await resolveOfficialUrl(result)
@@ -343,7 +349,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "activate_tenant") {
     ;(async () => {
       try {
-        const runtime = await getRuntimeState(chrome.runtime.getManifest().version)
+        const runtime = await getRuntimeState(
+          chrome.runtime.getManifest().version
+        )
         const activationResult = await activateTenant(
           request.data.activationCode,
           runtime.installationId
@@ -395,7 +403,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "sync_open_dataset") {
     ;(async () => {
       try {
-        await syncOpenDatasetFromCloud(true)
+        await syncOpenDataset(true, { throwOnFailure: true })
         const openDataset = await getOpenDatasetState()
         sendResponse({
           success: true,
@@ -460,7 +468,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   if (request.action === "report_false_positive") {
     ;(async () => {
-      const runtime = await getRuntimeState(chrome.runtime.getManifest().version)
+      const runtime = await getRuntimeState(
+        chrome.runtime.getManifest().version
+      )
       const [activation, openDataset] = await Promise.all([
         getTenantActivation(),
         getOpenDatasetState()
@@ -487,7 +497,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   if (request.action === "risk_bypassed") {
     ;(async () => {
-      const runtime = await getRuntimeState(chrome.runtime.getManifest().version)
+      const runtime = await getRuntimeState(
+        chrome.runtime.getManifest().version
+      )
       const activation = await getTenantActivation()
       const currentUrl = sender.tab?.url || ""
       await enqueueEvent(

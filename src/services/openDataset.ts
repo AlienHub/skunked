@@ -44,7 +44,9 @@ function normalizeAppRecord(input: any): OfficialSoftware {
 function normalizePhishingRecord(input: any): OpenDatasetPhishingDomain {
   return {
     domain: String(input.domain || "").toLowerCase(),
-    targetAppId: input.targetAppId ? String(input.targetAppId).toLowerCase() : undefined,
+    targetAppId: input.targetAppId
+      ? String(input.targetAppId).toLowerCase()
+      : undefined,
     status: "confirmed",
     source: String(input.source || "manual_review"),
     firstSeenAt: String(input.firstSeenAt || new Date().toISOString()),
@@ -54,11 +56,18 @@ function normalizePhishingRecord(input: any): OpenDatasetPhishingDomain {
   }
 }
 
-export async function syncOpenDataset(force = false): Promise<OpenDatasetState> {
+export async function syncOpenDataset(
+  force = false,
+  options: { throwOnFailure?: boolean } = {}
+): Promise<OpenDatasetState> {
   const currentState = await getOpenDatasetState()
   const intervalMs = CONFIG.OPEN_DATASET_SYNC_INTERVAL_MINUTES * 60 * 1000
 
-  if (!force && currentState.lastSyncedAt > 0 && Date.now() - currentState.lastSyncedAt < intervalMs) {
+  if (
+    !force &&
+    currentState.lastSyncedAt > 0 &&
+    Date.now() - currentState.lastSyncedAt < intervalMs
+  ) {
     return currentState
   }
 
@@ -69,13 +78,17 @@ export async function syncOpenDataset(force = false): Promise<OpenDatasetState> 
       fetchOpenPhishing({ status: "confirmed", page: 1, pageSize: 100 })
     ])
 
-    const phishingItems = [...(Array.isArray(firstPhishingPage.items) ? firstPhishingPage.items : [])]
+    const phishingItems = [
+      ...(Array.isArray(firstPhishingPage.items) ? firstPhishingPage.items : [])
+    ]
     const totalPages = firstPhishingPage.pagination?.totalPages || 1
 
     if (totalPages > 1) {
       const pending: Array<ReturnType<typeof fetchOpenPhishing>> = []
       for (let page = 2; page <= totalPages; page++) {
-        pending.push(fetchOpenPhishing({ status: "confirmed", page, pageSize: 100 }))
+        pending.push(
+          fetchOpenPhishing({ status: "confirmed", page, pageSize: 100 })
+        )
       }
       const restPages = await Promise.all(pending)
       for (const pageData of restPages) {
@@ -86,10 +99,14 @@ export async function syncOpenDataset(force = false): Promise<OpenDatasetState> 
     }
 
     const nextState: OpenDatasetState = {
-      datasetVersion: String(manifest.version || currentState.datasetVersion || "unknown"),
+      datasetVersion: String(
+        manifest.version || currentState.datasetVersion || "unknown"
+      ),
       updatedAt: parseTimestamp(manifest.generatedAt),
       lastSyncedAt: Date.now(),
-      apps: Array.isArray(apps.items) ? apps.items.map(normalizeAppRecord) : currentState.apps,
+      apps: Array.isArray(apps.items)
+        ? apps.items.map(normalizeAppRecord)
+        : currentState.apps,
       phishingConfirmed: phishingItems.length
         ? phishingItems.map(normalizePhishingRecord)
         : currentState.phishingConfirmed
@@ -103,7 +120,11 @@ export async function syncOpenDataset(force = false): Promise<OpenDatasetState> 
 
     await setOpenDatasetState(nextState)
     return nextState
-  } catch {
+  } catch (error) {
+    if (options.throwOnFailure) {
+      throw error
+    }
+
     if (currentState.apps.length) {
       return currentState
     }
@@ -126,10 +147,12 @@ export async function findOfficialUrlByBrand(brand?: string): Promise<string> {
   if (!brand) return "#"
   const dataset = await getCurrentOpenDataset()
   const software = dataset.apps.find(
-    (item) => item.name === brand || item.nameEn.toLowerCase() === brand.toLowerCase()
+    (item) =>
+      item.name === brand || item.nameEn.toLowerCase() === brand.toLowerCase()
   )
 
   if (software?.officialUrls?.[0]) return software.officialUrls[0]
-  if (software?.officialDomains?.[0]) return `https://${software.officialDomains[0]}`
+  if (software?.officialDomains?.[0])
+    return `https://${software.officialDomains[0]}`
   return "#"
 }

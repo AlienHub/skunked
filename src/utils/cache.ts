@@ -23,7 +23,7 @@ export const DEFAULT_POLICY: EffectivePolicy = {
   warningThreshold: CONFIG.WARNING_THRESHOLD,
   blockThreshold: CONFIG.BLOCK_THRESHOLD,
   mode: "balanced",
-  brandSignalMode: "url_only",
+  brandSignalMode: "page_signals",
   policyVersion: "local-default",
   updatedAt: Date.now()
 }
@@ -65,7 +65,8 @@ export function createDefaultOpenDatasetState(): OpenDatasetState {
 export function getCacheKey(url: string): string {
   try {
     const parsed = new URL(url)
-    const normalizedPath = parsed.pathname === "/" ? "/" : parsed.pathname.replace(/\/+$/, "")
+    const normalizedPath =
+      parsed.pathname === "/" ? "/" : parsed.pathname.replace(/\/+$/, "")
     const pathPart = normalizedPath.split("/").slice(0, 2).join("/") || "/"
     return `${extractDomain(url)}${pathPart}`
   } catch {
@@ -195,7 +196,9 @@ export async function getTenantActivation(): Promise<TenantActivation> {
   return storage.tenant?.activation || createDefaultActivation()
 }
 
-export async function setTenantActivation(activation: TenantActivation): Promise<void> {
+export async function setTenantActivation(
+  activation: TenantActivation
+): Promise<void> {
   const storage = await chrome.storage.local.get("tenant")
   await chrome.storage.local.set({
     tenant: {
@@ -231,7 +234,9 @@ export async function getEffectivePolicy(): Promise<EffectivePolicy> {
   })
 }
 
-export async function setEffectivePolicy(policy: EffectivePolicy): Promise<void> {
+export async function setEffectivePolicy(
+  policy: EffectivePolicy
+): Promise<void> {
   const storage = await chrome.storage.local.get("policy")
   await chrome.storage.local.set({
     policy: {
@@ -250,6 +255,8 @@ export async function getOpenDatasetState(): Promise<OpenDatasetState> {
   return createDefaultOpenDatasetState()
 }
 
-export async function setOpenDatasetState(state: OpenDatasetState): Promise<void> {
+export async function setOpenDatasetState(
+  state: OpenDatasetState
+): Promise<void> {
   await chrome.storage.local.set({ openDataset: state })
 }

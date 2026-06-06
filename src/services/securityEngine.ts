@@ -23,7 +23,7 @@ import {
   isSameOrSubdomain,
   isSearchEngine
 } from "../utils/domainMatcher"
-import { analyzeWithAI } from "./aiAnalyzer"
+import { analyzeWithAI, hasLocalModelConfig } from "./aiAnalyzer"
 import { matchBrandFromSignals } from "./brandMatcher"
 import { getCurrentOpenDataset } from "./openDataset"
 
@@ -128,20 +128,43 @@ function resolveScopedApps(
   url: string,
   pageTitle: string | undefined,
   dataset: OpenDatasetState,
-  brandSignalMode: BrandSignalMode
+  brandSignalMode: BrandSignalMode,
+  domContent?: ExtractedDOMContent
 ): OfficialSoftware[] {
+  const pageSignalText = [
+    pageTitle || "",
+    domContent?.title || "",
+    domContent?.h1Text || "",
+    ...(domContent?.buttonTexts || [])
+  ].join(" ")
   const signalText =
     brandSignalMode === "page_signals"
-      ? `${url} ${pageTitle || ""}`.toLowerCase()
+      ? `${url} ${pageSignalText}`.toLowerCase()
       : url.toLowerCase()
 
   return dataset.apps.filter((app) =>
-    identityAnchorsForApp(app).some((anchor) => textIncludesToken(signalText, anchor))
+    identityAnchorsForApp(app).some((anchor) =>
+      textIncludesToken(signalText, anchor)
+    )
   )
 }
 
-function hasDownloadIntent(url: string, pageTitle?: string): boolean {
-  const text = `${url} ${pageTitle || ""}`.toLowerCase()
+function hasDownloadIntent(
+  url: string,
+  pageTitle?: string,
+  domContent?: ExtractedDOMContent
+): boolean {
+  const text = [
+    url,
+    pageTitle || "",
+    domContent?.title || "",
+    domContent?.h1Text || "",
+    ...(domContent?.buttonTexts || []),
+    ...(domContent?.linkTexts || []),
+    ...(domContent?.downloadKeywords || [])
+  ]
+    .join(" ")
+    .toLowerCase()
   return DOWNLOAD_INTENT_KEYWORDS.some((keyword) => text.includes(keyword))
 }
 
@@ -232,7 +255,8 @@ export async function layer2Heuristics(
   url: string,
   pageTitle: string | undefined,
   policy: EffectivePolicy,
-  dataset: OpenDatasetState
+  dataset: OpenDatasetState,
+  domContent?: ExtractedDOMContent
 ): Promise<{
   immediate?: PhishingAnalysisResult
   shouldEscalateToCloud: boolean
@@ -258,9 +282,18 @@ export async function layer2Heuristics(
     url,
     pageTitle,
     dataset,
-    policy.brandSignalMode
+    policy.brandSignalMode,
+    domContent
   )
   if (!scopedApps.length) {
+    if (policy.brandSignalMode === "page_signals" && !pageTitle) {
+      return {
+        shouldEscalateToCloud: false,
+        layerHint: "heuristics",
+        reason: "needs-page-signals"
+      }
+    }
+
     return {
       immediate: buildResult({
         verdict: resolveVerdictByPolicy(8, policy),
@@ -316,7 +349,7 @@ export async function layer2Heuristics(
 
   const scopedKeywords = scopedApps.flatMap((app) => app.keywords)
   const keywordHit = containsSensitiveKeywords(url, pageTitle, scopedKeywords)
-  const downloadIntent = hasDownloadIntent(url, pageTitle)
+  const downloadIntent = hasDownloadIntent(url, pageTitle, domContent)
 
   if (keywordHit && downloadIntent) {
     return {
@@ -377,12 +410,13 @@ export async function layer3CloudAnalysis(
   }
 
   const activation = await getTenantActivation()
-  if (!activation.activated || !activation.token) {
+  const hasLocalModel = await hasLocalModelConfig()
+  if (!hasLocalModel && (!activation.activated || !activation.token)) {
     const warnConfidence = Math.max(policy.warningThreshold, 62)
     const fallback = buildResult({
       verdict: "warn",
       confidence: warnConfidence,
-      reason: "需企业激活后启用云语义研判，当前仅基于本地规则提示风险",
+      reason: "页面疑似冒充受保护软件官网，当前基于本地规则提示风险",
       layer: "heuristics",
       datasetVersion: dataset.datasetVersion
     })
@@ -438,7 +472,7 @@ export async function layer3CloudAnalysis(
       matchedSoftware: brandMatch.software,
       layer: "cloud",
       modelTraceId: cloudDecision.modelTraceId,
-      source: "cloud",
+      source: hasLocalModel ? "local" : "cloud",
       datasetVersion: dataset.datasetVersion
     })
 
@@ -475,7 +509,13 @@ export async function analyzePageSecurity(
     return layer1Result
   }
 
-  const layer2Result = await layer2Heuristics(url, pageTitle, policy, dataset)
+  const layer2Result = await layer2Heuristics(
+    url,
+    pageTitle,
+    policy,
+    dataset,
+    domContent
+  )
   if (layer2Result.immediate) {
     return layer2Result.immediate
   }
