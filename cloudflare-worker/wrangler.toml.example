@@ -5,6 +5,8 @@ compatibility_date = "2026-03-07"
 # 1. Create resources:
 #    wrangler d1 create skunked-events
 #    wrangler kv namespace create ACTIVATION_KV
+#    wrangler kv namespace create OPEN_API_RATE_LIMIT_KV
+#    wrangler r2 bucket create skunked-open-api-access-logs
 # 2. Copy the returned IDs into wrangler.toml (local file, not committed with real IDs)
 # 3. Apply schema: wrangler d1 execute skunked-events --file=./schema.sql
 # 4. Set secrets (see .dev.vars.example)
@@ -18,7 +20,16 @@ database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
 binding = "ACTIVATION_KV"
 id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
 
+[[kv_namespaces]]
+binding = "OPEN_API_RATE_LIMIT_KV"
+id = "REPLACE_WITH_YOUR_OPEN_API_RATE_LIMIT_KV_NAMESPACE_ID"
+
+[[r2_buckets]]
+binding = "OPEN_API_ACCESS_LOGS"
+bucket_name = "skunked-open-api-access-logs"
+
 [vars]
 MODEL_BASE_URL = "https://api.siliconflow.cn/v1"
 MODEL_NAME = "Qwen/Qwen3.5-27B"
 MODEL_TIMEOUT_MS = "2500"
+OPEN_API_RATE_LIMIT_PER_MINUTE = "5"

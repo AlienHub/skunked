@@ -30,8 +30,7 @@ type PhishingRecord = {
 const appRecords = apps as AppRecord[]
 const phishingRecords = phishing as PhishingRecord[]
 const apiBase =
-  import.meta.env.VITE_OPEN_DATA_API_BASE_URL ||
-  "https://skunked-open-data.pindo.page"
+  import.meta.env.VITE_OPEN_DATA_API_BASE_URL || window.location.origin
 
 const categoryLabels: Record<Category, string> = {
   office: "办公效率",
@@ -234,7 +233,7 @@ function renderApi() {
     ["GET", "/v1/open/manifest", "版本、计数与校验值"],
     ["GET", "/v1/open/apps", "官方应用目录"],
     ["GET", "/v1/open/phishing", "确认钓鱼域名分页"],
-    ["GET", "/v1/open/lookup?host=", "主机名命中查询"]
+    ["GET", "/v1/open/lookup?host=dingtalk.com", "主机名命中查询"]
   ]
 
   return `<section class="panel api-panel" aria-labelledby="api-title">
@@ -247,13 +246,16 @@ function renderApi() {
     </div>
     <div class="endpoint-list">
       ${endpoints
-        .map(
-          ([method, path, desc]) => `<div class="endpoint">
+        .map(([method, path, desc]) => {
+          const endpointUrl = new URL(path, apiBase).toString()
+          return `<div class="endpoint">
             <span>${method}</span>
-            <code>${escapeHtml(path)}</code>
+            <a href="${escapeHtml(endpointUrl)}" target="_blank" rel="noreferrer">
+              <code>${escapeHtml(endpointUrl)}</code>
+            </a>
             <p>${escapeHtml(desc)}</p>
           </div>`
-        )
+        })
         .join("")}
     </div>
     <div class="code-slab">
@@ -304,8 +306,6 @@ function render() {
         <span>公开数据</span>
       </a>
       <nav>
-        <a href="#dataset">数据集</a>
-        <a href="#api">接口</a>
         <a href="https://github.com/AlienHub/skunked" target="_blank" rel="noreferrer">GitHub</a>
       </nav>
     </header>

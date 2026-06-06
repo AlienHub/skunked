@@ -10,3 +10,14 @@ routes = [
 directory = "../open-data/dist-ui"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
+
+[vars]
+OPEN_API_RATE_LIMIT_PER_MINUTE = "5"
+
+[[kv_namespaces]]
+binding = "OPEN_API_RATE_LIMIT_KV"
+id = "b3624fb44c5145c4a76f7db97d2b9a55"
+
+[[r2_buckets]]
+binding = "OPEN_API_ACCESS_LOGS"
+bucket_name = "skunked-open-api-access-logs"
