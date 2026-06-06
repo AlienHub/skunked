@@ -3,91 +3,32 @@ import "./options.css"
 import { useEffect, useState } from "react"
 
 interface RuntimeInfo {
+  activated: boolean
+  orgId?: string
+  policyVersion?: string
+  queueSize?: number
   datasetVersion?: string
 }
 
-type ModelPresetId = "deepseek" | "kimi" | "glm" | "minimax" | "custom"
-
-interface ModelConfig {
-  enabled: boolean
-  preset: ModelPresetId
-  apiKey: string
-  baseUrl: string
-  modelId: string
-}
-
-const MODEL_PRESETS: Record<
-  ModelPresetId,
-  {
-    label: string
-    baseUrl: string
-    modelId: string
-  }
-> = {
-  deepseek: {
-    label: "DeepSeek",
-    baseUrl: "https://api.deepseek.com/v1",
-    modelId: "deepseek-chat"
-  },
-  kimi: {
-    label: "Kimi",
-    baseUrl: "https://api.moonshot.cn/v1",
-    modelId: "moonshot-v1-8k"
-  },
-  glm: {
-    label: "GLM",
-    baseUrl: "https://open.bigmodel.cn/api/paas/v4",
-    modelId: "glm-4-flash"
-  },
-  minimax: {
-    label: "MiniMax",
-    baseUrl: "https://api.minimax.io/v1",
-    modelId: "MiniMax-M1"
-  },
-  custom: {
-    label: "自定义",
-    baseUrl: "https://api.openai.com/v1",
-    modelId: "gpt-4o-mini"
-  }
-}
-
-const MODEL_PRESET_ORDER = Object.keys(MODEL_PRESETS) as ModelPresetId[]
-
-function inferPreset(baseUrl?: string): ModelPresetId {
-  if (!baseUrl) return "deepseek"
-  const normalized = baseUrl.replace(/\/$/, "")
-  const matchedPreset = MODEL_PRESET_ORDER.find(
-    (preset) => MODEL_PRESETS[preset].baseUrl.replace(/\/$/, "") === normalized
-  )
-
-  return matchedPreset || "custom"
-}
-
-function getLocalStorage(keys: string | string[]) {
-  return new Promise<Record<string, any>>((resolve) => {
-    chrome.storage.local.get(keys, resolve)
-  })
-}
-
-function setLocalStorage(items: Record<string, any>) {
-  return new Promise<void>((resolve) => {
-    chrome.storage.local.set(items, resolve)
-  })
+interface Policy {
+  warningThreshold: number
+  blockThreshold: number
+  mode: string
+  brandSignalMode?: string
 }
 
 function IndexOptions() {
-  const [runtimeInfo, setRuntimeInfo] = useState<RuntimeInfo>({})
-  const [modelConfig, setModelConfig] = useState<ModelConfig>({
-    enabled: false,
-    preset: "deepseek",
-    apiKey: "",
-    baseUrl: MODEL_PRESETS.deepseek.baseUrl,
-    modelId: MODEL_PRESETS.deepseek.modelId
+  const [activationCode, setActivationCode] = useState("")
+  const [runtimeInfo, setRuntimeInfo] = useState<RuntimeInfo>({
+    activated: false
+  })
+  const [policy, setPolicy] = useState<Policy>({
+    warningThreshold: 60,
+    blockThreshold: 90,
+    mode: "balanced"
   })
   const [busy, setBusy] = useState(false)
-  const [modelBusy, setModelBusy] = useState(false)
   const [message, setMessage] = useState("")
-  const [modelMessage, setModelMessage] = useState("")
 
   const load = () => {
     chrome.runtime.sendMessage({ action: "get_runtime_info" }, (response) => {
@@ -95,29 +36,10 @@ function IndexOptions() {
         setRuntimeInfo(response.data)
       }
     })
-
-    getLocalStorage([
-      "settings",
-      "aiProvider",
-      "openaiApiKey",
-      "baseUrl",
-      "modelId",
-      "modelPreset"
-    ]).then((storage) => {
-      const preset =
-        storage.modelPreset && MODEL_PRESETS[storage.modelPreset]
-          ? storage.modelPreset
-          : inferPreset(storage.baseUrl)
-      const presetConfig = MODEL_PRESETS[preset]
-      const apiKey = storage.openaiApiKey || ""
-
-      setModelConfig({
-        enabled: Boolean(storage.settings?.enableAI && apiKey),
-        preset,
-        apiKey,
-        baseUrl: storage.baseUrl || presetConfig.baseUrl,
-        modelId: storage.modelId || presetConfig.modelId
-      })
+    chrome.storage.local.get("policy", (data) => {
+      if (data.policy?.effective) {
+        setPolicy(data.policy.effective)
+      }
     })
   }
 
@@ -125,255 +47,203 @@ function IndexOptions() {
     load()
   }, [])
 
+  const activate = () => {
+    if (!activationCode.trim()) {
+      setMessage("请输入激活码")
+      return
+    }
+
+    setBusy(true)
+    setMessage("")
+    chrome.runtime.sendMessage(
+      {
+        action: "activate_tenant",
+        data: {
+          activationCode: activationCode.trim()
+        }
+      },
+      (response) => {
+        setBusy(false)
+        if (response?.success) {
+          setMessage("激活成功，企业策略已生效")
+          setActivationCode("")
+          load()
+        } else {
+          setMessage(response?.error || "激活失败，请检查激活码")
+        }
+      }
+    )
+  }
+
+  const syncPolicy = () => {
+    setBusy(true)
+    setMessage("")
+    chrome.runtime.sendMessage({ action: "sync_policy" }, (response) => {
+      setBusy(false)
+      if (response?.success) {
+        setMessage("策略同步成功")
+        load()
+      } else {
+        setMessage(response?.error || "策略同步失败")
+      }
+    })
+  }
+
+  const flushReporting = () => {
+    setBusy(true)
+    setMessage("")
+    chrome.runtime.sendMessage({ action: "flush_reporting" }, (response) => {
+      setBusy(false)
+      if (response?.success) {
+        setMessage("上报队列已触发同步")
+        load()
+      } else {
+        setMessage(response?.error || "上报失败")
+      }
+    })
+  }
+
   const syncOpenDataset = () => {
     setBusy(true)
     setMessage("")
     chrome.runtime.sendMessage({ action: "sync_open_dataset" }, (response) => {
       setBusy(false)
       if (response?.success) {
-        setMessage("防护名单已更新")
+        setMessage("公开数据集同步成功")
         load()
       } else {
-        setMessage(response?.error || "更新失败，请稍后重试")
+        setMessage(response?.error || "公开数据集同步失败")
       }
     })
   }
 
-  const selectModelPreset = (preset: ModelPresetId) => {
-    const presetConfig = MODEL_PRESETS[preset]
-    setModelMessage("")
-    setModelConfig((current) => ({
-      ...current,
-      preset,
-      baseUrl: preset === "custom" ? current.baseUrl : presetConfig.baseUrl,
-      modelId: preset === "custom" ? current.modelId : presetConfig.modelId
-    }))
-  }
-
-  const saveModelConfig = async () => {
-    setModelBusy(true)
-    setModelMessage("")
-
-    try {
-      const apiKey = modelConfig.apiKey.trim()
-      const baseUrl = modelConfig.baseUrl.trim().replace(/\/$/, "")
-      const modelId = modelConfig.modelId.trim()
-      const storage = await getLocalStorage("settings")
-      const settings = {
-        warningThreshold: 60,
-        blockThreshold: 90,
-        cacheExpiry: 86400000,
-        ...storage.settings,
-        enableAI: modelConfig.enabled && Boolean(apiKey)
-      }
-
-      await setLocalStorage({
-        settings,
-        aiProvider: "openai",
-        openaiApiKey: apiKey,
-        baseUrl,
-        modelId,
-        modelPreset: modelConfig.preset
-      })
-
-      setModelConfig((current) => ({
-        ...current,
-        enabled: settings.enableAI,
-        apiKey,
-        baseUrl,
-        modelId
-      }))
-      setModelMessage(
-        settings.enableAI
-          ? "大模型辅助识别已开启"
-          : "配置已保存，暂未启用大模型辅助识别"
-      )
-    } catch (error) {
-      setModelMessage(
-        error instanceof Error ? error.message : "保存失败，请稍后重试"
-      )
-    } finally {
-      setModelBusy(false)
-    }
-  }
+  const protectionMode = runtimeInfo.activated ? "企业增强防护" : "免费基础防护"
+  const brandSignalLabel =
+    policy.brandSignalMode === "page_signals"
+      ? "URL + 页面文案（企业增强）"
+      : "仅 URL（免费默认）"
 
   return (
     <main className="options-root">
-      <header className="settings-header">
-        <div className="brand-mark" aria-hidden="true">
-          KJ
-        </div>
+      <div className="hero">
+        <span className="eyebrow">{protectionMode}</span>
+        <h1>SKUNKED 防护设置</h1>
+        <p>
+          插件安装后即可使用本地规则、公开数据集和相似域名检测。企业激活只用于开启云语义研判、组织策略和事件审计。
+        </p>
+      </div>
+
+      <section className="panel protection-summary">
         <div>
-          <span className="eyebrow">防护已开启</span>
-          <h1>空军设置</h1>
-          <p>这里不需要复杂配置。保持开启即可自动识别可疑下载页。</p>
-        </div>
-      </header>
-
-      <section className="hero-panel">
-        <div>
-          <h2>正在保护你的浏览器</h2>
-          <p>
-            空军会在你访问疑似假官网、钓鱼下载页或高仿域名时提醒你，并优先引导前往官方站点。
-          </p>
-        </div>
-        <span>已启用</span>
-      </section>
-
-      <section className="quick-grid">
-        <section className="panel">
-          <div className="panel-heading">
-            <h2>保护内容</h2>
-          </div>
-          <div className="feature-list">
-            <div>
-              <strong>假官网识别</strong>
-              <span>发现冒充办公软件、远控软件的下载页面。</span>
-            </div>
-            <div>
-              <strong>可疑域名提醒</strong>
-              <span>检查高仿域名、诱导下载和异常后缀。</span>
-            </div>
-            <div>
-              <strong>官方入口引导</strong>
-              <span>风险页面会提供官方站点入口，减少误点。</span>
-            </div>
-          </div>
-        </section>
-
-        <section className="panel">
-          <div className="panel-heading">
-            <h2>防护名单</h2>
-            <span>{runtimeInfo.datasetVersion ? "可用" : "本地可用"}</span>
-          </div>
+          <h2>基础防护已开启</h2>
           <p className="caption">
-            防护名单包含受保护品牌、官方域名和已确认风险域名。离线时仍会使用本地名单继续防护。
+            无需登录或激活码，也会阻断确认钓鱼域名、识别高仿域名，并引导用户前往官方站点。
           </p>
-          <button
-            className="primary-action"
-            onClick={syncOpenDataset}
-            disabled={busy}
-          >
-            {busy ? "更新中..." : "更新防护名单"}
-          </button>
-          {message ? <p className="feedback">{message}</p> : null}
-        </section>
+        </div>
+        <div className="summary-grid">
+          <div>
+            <strong>本地规则</strong>
+            <span>官方域 / 黑名单 / 相似域名</span>
+          </div>
+          <div>
+            <strong>公开数据集</strong>
+            <span>{runtimeInfo.datasetVersion || "fallback-local-v1"}</span>
+          </div>
+          <div>
+            <strong>品牌识别</strong>
+            <span>{brandSignalLabel}</span>
+          </div>
+        </div>
       </section>
 
-      <details className="panel advanced-panel">
-        <summary>
-          <span>
-            <strong>大模型辅助识别</strong>
-            <small>可选增强，需要你自己的 API Key</small>
-          </span>
-          <em>
-            {modelConfig.enabled && modelConfig.apiKey ? "已启用" : "未启用"}
-          </em>
-        </summary>
-
-        <div className="model-form">
-          <label className="switch-row">
-            <input
-              type="checkbox"
-              checked={modelConfig.enabled}
-              onChange={(event) =>
-                setModelConfig((current) => ({
-                  ...current,
-                  enabled: event.target.checked
-                }))
-              }
-            />
-            <span>
-              <strong>使用大模型辅助判断不明确页面</strong>
-              <small>未配置时仍会使用本地规则和防护名单。</small>
-            </span>
-          </label>
-
-          <div className="preset-row" aria-label="模型服务商">
-            {MODEL_PRESET_ORDER.map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                className={modelConfig.preset === preset ? "selected" : ""}
-                onClick={() => selectModelPreset(preset)}
-              >
-                {MODEL_PRESETS[preset].label}
-              </button>
-            ))}
-          </div>
-
-          <div className="form-grid">
-            <label>
-              <span>API Key</span>
-              <input
-                type="password"
-                value={modelConfig.apiKey}
-                placeholder="粘贴你的平台 API Key"
-                onChange={(event) =>
-                  setModelConfig((current) => ({
-                    ...current,
-                    apiKey: event.target.value
-                  }))
-                }
-              />
-            </label>
-
-            <label>
-              <span>API 地址</span>
-              <input
-                type="url"
-                value={modelConfig.baseUrl}
-                onChange={(event) =>
-                  setModelConfig((current) => ({
-                    ...current,
-                    baseUrl: event.target.value
-                  }))
-                }
-              />
-            </label>
-
-            <label>
-              <span>模型名称</span>
-              <input
-                type="text"
-                value={modelConfig.modelId}
-                onChange={(event) =>
-                  setModelConfig((current) => ({
-                    ...current,
-                    modelId: event.target.value
-                  }))
-                }
-              />
-            </label>
-          </div>
-
-          <div className="form-footer">
-            <p>
-              Key
-              只保存在本机浏览器扩展存储中。不同平台模型名可能调整，可按控制台中的最新名称修改。
-            </p>
-            <button
-              className="secondary-action"
-              onClick={saveModelConfig}
-              disabled={modelBusy}
-            >
-              {modelBusy ? "保存中..." : "保存配置"}
-            </button>
-          </div>
-
-          {modelMessage ? <p className="feedback">{modelMessage}</p> : null}
+      <section className="panel">
+        <h2>企业增强</h2>
+        <p className="caption">
+          可选能力：接入企业策略、云端语义研判和事件审计；未激活不影响免费基础防护。
+        </p>
+        <div className="row">
+          <input
+            type="text"
+            value={activationCode}
+            placeholder="输入企业激活码"
+            onChange={(event) => setActivationCode(event.target.value)}
+          />
+          <button disabled={busy} onClick={activate}>
+            {busy
+              ? "处理中..."
+              : runtimeInfo.activated
+                ? "更新绑定"
+                : "开启增强"}
+          </button>
         </div>
-      </details>
+      </section>
+
+      <section className="panel">
+        <h2>当前状态</h2>
+        <ul className="status-list">
+          <li>
+            <strong>防护模式：</strong>
+            {protectionMode}
+          </li>
+          <li>
+            <strong>企业绑定：</strong>
+            {runtimeInfo.activated
+              ? `已绑定 (${runtimeInfo.orgId || "未知组织"})`
+              : "未绑定（不影响免费防护）"}
+          </li>
+          <li>
+            <strong>策略版本：</strong>
+            {runtimeInfo.policyVersion || "local-default"}
+          </li>
+          <li>
+            <strong>待上报事件：</strong>
+            {runtimeInfo.queueSize ?? 0}
+          </li>
+          <li>
+            <strong>数据集版本：</strong>
+            {runtimeInfo.datasetVersion || "fallback-local-v1"}
+          </li>
+          <li>
+            <strong>策略模式：</strong>
+            {policy.mode}
+          </li>
+          <li>
+            <strong>品牌识别：</strong>
+            {brandSignalLabel}
+          </li>
+          <li>
+            <strong>阈值：</strong>
+            警告 {policy.warningThreshold}% / 阻断 {policy.blockThreshold}%
+          </li>
+        </ul>
+      </section>
+
+      <section className="panel panel-actions">
+        <button className="secondary" onClick={syncPolicy} disabled={busy}>
+          同步策略
+        </button>
+        <button className="secondary" onClick={flushReporting} disabled={busy}>
+          立即上报事件
+        </button>
+        <button className="secondary" onClick={syncOpenDataset} disabled={busy}>
+          同步公开数据集
+        </button>
+      </section>
 
       <section className="panel policy-note">
-        <h2>遇到风险页面时</h2>
-        <div className="note-grid">
-          <p>高风险页面会被阻断。</p>
-          <p>中等风险页面会显示提醒。</p>
-          <p>你可以选择继续访问，但建议优先去官网。</p>
-          <p>关闭提醒不会关闭整体防护。</p>
-        </div>
+        <h2>防护说明</h2>
+        <ol>
+          <li>免费版默认启用本地检测，不需要企业账号或 API Key。</li>
+          <li>高风险页面会被阻断，并提供官方站点入口。</li>
+          <li>中等风险仅展示告警，用户可以自行关闭提示。</li>
+          <li>
+            未激活企业时不调用云语义研判；需要云复核的场景会用本地规则降级提醒。
+          </li>
+          <li>企业增强开启后，才会使用组织策略、页面文案识别和事件审计。</li>
+        </ol>
       </section>
+
+      {message ? <p className="feedback">{message}</p> : null}
     </main>
   )
 }

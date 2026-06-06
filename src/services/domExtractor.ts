@@ -36,7 +36,7 @@ export function extractDOMContent(): ExtractedDOMContent {
     document.querySelector("footer")?.textContent || ""
 
   // Extract download-related keywords
-  const allText = document.body.textContent || ""
+  const allText = (document.body.textContent || "").slice(0, 5000)
   const downloadKeywords = [
     "下载",
     "download",

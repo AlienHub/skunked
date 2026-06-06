@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SKUNKED - 开放反钓鱼数据集</title>
+    <meta
+      name="description"
+      content="SKUNKED 公开官方应用域名与确认钓鱼域名，驱动浏览器插件实时防护。"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <script defer src="./index.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <header class="nav fade-in">
+        <div class="brand"><span class="brand-dot"></span> SKUNKED</div>
+        <div class="nav-actions">
+          <a class="btn btn-ghost" href="./dataset.html">浏览数据集</a>
+          <a class="btn btn-primary" href="https://github.com" target="_blank" rel="noreferrer">贡献样本</a>
+        </div>
+      </header>
+
+      <section class="hero">
+        <article class="hero-copy fade-in">
+          <span class="label">Open Dataset · Browser Protection</span>
+          <h1>把反钓鱼能力，变成公开数据基础设施</h1>
+          <p>
+            SKUNKED 将官方站点清单与人工确认钓鱼域名公开发布。
+            插件通过版本化数据集持续更新，不再依赖频繁发版。
+          </p>
+          <div class="hero-cta">
+            <a class="btn btn-primary" href="./dataset.html">浏览数据集</a>
+            <a class="btn btn-ghost" href="https://chromewebstore.google.com" target="_blank" rel="noreferrer">安装插件</a>
+            <a class="btn btn-ghost" href="../CONTRIBUTING_DATASET.md" target="_blank" rel="noreferrer">贡献规范</a>
+          </div>
+        </article>
+
+        <aside class="metrics fade-in">
+          <div class="metric">
+            <strong id="metric-version">--</strong>
+            <span>当前数据集版本</span>
+          </div>
+          <div class="metric">
+            <strong id="metric-apps">--</strong>
+            <span>官方应用记录</span>
+          </div>
+          <div class="metric">
+            <strong id="metric-official">--</strong>
+            <span>官网域名总数</span>
+          </div>
+          <div class="metric">
+            <strong id="metric-phishing">--</strong>
+            <span>确认钓鱼域名</span>
+          </div>
+        </aside>
+      </section>
+
+      <section class="section fade-in">
+        <h2>为什么要开源这套数据</h2>
+        <p>
+          传统黑名单更新慢且封闭。SKUNKED 用“公开、可审查、可复用”的数据模型，
+          让企业、研究者与社区在同一份事实基础上协作。
+        </p>
+        <div class="grid-3">
+          <div class="card">
+            <span class="pill">解耦</span>
+            <h3>检测逻辑与数据分离</h3>
+            <p>插件只负责执行策略，域名知识库由公开数据集持续驱动。</p>
+          </div>
+          <div class="card">
+            <span class="pill">可追溯</span>
+            <h3>版本化发布</h3>
+            <p>每次更新带版本号和摘要校验，便于复盘策略命中效果。</p>
+          </div>
+          <div class="card">
+            <span class="pill">社区共建</span>
+            <h3>人工审核入库</h3>
+            <p>确认钓鱼域名必须经过人工审核，降低误报扩散风险。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section fade-in">
+        <h2>产品能力</h2>
+        <div class="grid-3">
+          <div class="card">
+            <h3>Layer 1 本地极速判定</h3>
+            <p>优先基于官方域名和确认钓鱼域名做毫秒级判断。</p>
+          </div>
+          <div class="card">
+            <h3>Layer 2 启发式拦截</h3>
+            <p>域名相似度、typosquatting、关键词触发，快速识别仿冒站点。</p>
+          </div>
+          <div class="card">
+            <h3>Layer 3 云语义分析</h3>
+            <p>复杂页面进入云端判定，并将结果关联到数据版本追踪。</p>
+          </div>
+        </div>
+      </section>
+
+      <p class="footer">
+        SKUNKED Open Dataset · Licensed under CC BY 4.0 (data) and Apache-2.0 (code)
+      </p>
+    </div>
+  </body>
+</html>

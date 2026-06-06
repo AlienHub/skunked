@@ -4,6 +4,7 @@ node_modules
 # Production
 build
 dist
+dist-ui
 .plasmo
 
 # Misc
@@ -17,10 +18,15 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Local env files
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+cloudflare-worker/.dev.vars
+
+# Wrangler local dev state (miniflare D1/KV sqlite)
+.wrangler/
 
 # Plasmo
 .plasmo

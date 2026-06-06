@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react"
-
 import "./style.css"
+
+import { useEffect, useState } from "react"
 
 interface Stats {
   totalScans: number
@@ -9,52 +9,53 @@ interface Stats {
   officialVerified: number
 }
 
-interface AnalysisResult {
+interface PageStatus {
   status: "safe" | "warning" | "blocked" | "pending"
   result?: {
-    isPhishing: boolean
-    confidence: number
     reason: string
-    matchedSoftware?: {
-      name: string
-      officialDomains: string[]
-    }
+    confidence: number
+    matchedBrand?: string
   }
 }
 
-function getStatusMeta(status?: AnalysisResult["status"]) {
+interface RuntimeInfo {
+  datasetVersion?: string
+}
+
+function statusMeta(status: PageStatus["status"]) {
   if (status === "blocked") {
     return {
-      tone: "danger",
-      badge: "已拦截",
-      title: "已阻止可疑页面",
-      description: "此页面存在仿冒或诱导下载风险，建议从官方站点重新访问。"
+      label: "已阻止风险",
+      tone: "danger" as const,
+      icon: "!",
+      title: "已为你拦截疑似钓鱼页面",
+      description: "建议通过官方入口重新访问或下载软件。"
     }
   }
-
   if (status === "warning") {
     return {
-      tone: "warning",
-      badge: "需留意",
-      title: "发现可疑信号",
-      description: "页面可能不是官方站点，下载前请确认域名来源。"
+      label: "需要留意",
+      tone: "warning" as const,
+      icon: "?",
+      title: "此页面存在仿冒风险",
+      description: "如果要下载办公或远控软件，请优先前往官网。"
     }
   }
-
   if (status === "safe") {
     return {
-      tone: "safe",
-      badge: "未发现风险",
-      title: "当前页面未触发风险",
-      description: "已完成本地规则和受保护品牌域名检查。"
+      label: "基础防护中",
+      tone: "safe" as const,
+      icon: "✓",
+      title: "未发现目标钓鱼风险",
+      description: "SKUNKED 正在本地检查高仿软件下载页和可疑域名。"
     }
   }
-
   return {
-    tone: "neutral",
-    badge: "检测中",
-    title: "正在检查当前页面",
-    description: "若发现仿冒下载页或可疑域名，会自动提示。"
+    label: "基础防护中",
+    tone: "neutral" as const,
+    icon: "·",
+    title: "正在保护当前浏览",
+    description: "遇到高仿软件下载页时会自动告警或阻断。"
   }
 }
 
@@ -65,96 +66,97 @@ function IndexPopup() {
     warningShown: 0,
     officialVerified: 0
   })
-  const [currentPageStatus, setCurrentPageStatus] =
-    useState<AnalysisResult | null>(null)
+  const [pageStatus, setPageStatus] = useState<PageStatus>({
+    status: "pending"
+  })
+  const [runtime, setRuntime] = useState<RuntimeInfo>({
+  })
 
   useEffect(() => {
     chrome.storage.local.get(["stats"], (data) => {
-      if (data.stats) setStats(data.stats)
+      if (data.stats) {
+        setStats(data.stats)
+      }
     })
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const tabId = tabs[0]?.id
+      const tabId = tabs?.[0]?.id
       if (!tabId) return
-
       chrome.storage.local.get(`analysis_${tabId}`, (data) => {
         if (data[`analysis_${tabId}`]) {
-          setCurrentPageStatus(data[`analysis_${tabId}`])
+          setPageStatus(data[`analysis_${tabId}`])
         }
       })
     })
+
+    chrome.runtime.sendMessage({ action: "get_runtime_info" }, (response) => {
+      if (response?.success && response?.data) {
+        setRuntime(response.data)
+      }
+    })
   }, [])
 
-  const meta = getStatusMeta(currentPageStatus?.status)
-  const result = currentPageStatus?.result
+  const meta = statusMeta(pageStatus.status)
 
   return (
-    <div className="popup-shell">
-      <header className="topbar">
-        <div className="brand-mark" aria-hidden="true">
-          KJ
-        </div>
-        <div className="brand-copy">
-          <h1>空军</h1>
+    <div className="popup-root">
+      <header className="popup-header">
+        <div>
+          <h1>SKUNKED</h1>
           <p>反钓鱼防护</p>
         </div>
-        <span className={`status-badge ${meta.tone}`}>{meta.badge}</span>
+        <span className={`badge badge-${meta.tone}`}>{meta.label}</span>
       </header>
 
-      <main>
-        <section className={`status-panel ${meta.tone}`}>
-          <div className="status-head">
-            <span className="status-dot" aria-hidden="true" />
-            <h2>{meta.title}</h2>
+      <section className={`card card-${meta.tone}`}>
+        <div className="status-row">
+          <span className="status-icon">{meta.icon}</span>
+          <div>
+            <p className="status-title">{meta.title}</p>
+            <p className="status-desc">
+              {pageStatus.result?.reason || meta.description}
+            </p>
           </div>
-          <p>{result?.reason || meta.description}</p>
+        </div>
+        {pageStatus.status !== "safe" && !!pageStatus.result?.confidence && (
+          <p className="confidence">置信度 {pageStatus.result.confidence}%</p>
+        )}
+      </section>
 
-          {result?.matchedSoftware || result?.confidence ? (
-            <dl className="status-meta">
-              {result?.matchedSoftware ? (
-                <div>
-                  <dt>目标品牌</dt>
-                  <dd>{result.matchedSoftware.name}</dd>
-                </div>
-              ) : null}
-              {result?.confidence ? (
-                <div>
-                  <dt>置信度</dt>
-                  <dd>{result.confidence}%</dd>
-                </div>
-              ) : null}
-            </dl>
-          ) : null}
-        </section>
-
-        <section className="section-block">
-          <div className="section-heading">
-            <h2>防护统计</h2>
-            <span>本机累计</span>
+      <section className="card">
+        <h2>防护统计</h2>
+        <div className="metric-grid">
+          <div className="metric">
+            <span>{stats.phishingBlocked}</span>
+            <small>已阻止</small>
           </div>
-          <div className="metric-grid">
-            <div className="metric-cell">
-              <strong>{stats.totalScans}</strong>
-              <span>已检查</span>
-            </div>
-            <div className="metric-cell">
-              <strong>{stats.phishingBlocked}</strong>
-              <span>已阻断</span>
-            </div>
-            <div className="metric-cell">
-              <strong>{stats.warningShown}</strong>
-              <span>已提醒</span>
-            </div>
-            <div className="metric-cell">
-              <strong>{stats.officialVerified}</strong>
-              <span>官方域</span>
-            </div>
+          <div className="metric">
+            <span>{stats.warningShown}</span>
+            <small>告警</small>
           </div>
-        </section>
-      </main>
+          <div className="metric">
+            <span>{stats.officialVerified}</span>
+            <small>官方验证</small>
+          </div>
+          <div className="metric">
+            <span>{stats.totalScans}</span>
+            <small>已检查</small>
+          </div>
+        </div>
+      </section>
 
-      <footer className="popup-actions">
-        <button type="button" onClick={() => chrome.runtime.openOptionsPage()}>
+      <section className="card">
+        <h2>数据集</h2>
+        <p className="tenant-line">
+          数据集版本：{runtime.datasetVersion || "fallback-local-v1"}
+        </p>
+      </section>
+
+      <footer className="popup-footer">
+        <button
+          className="ghost-btn"
+          onClick={() => chrome.runtime.openOptionsPage()}
+        >
           设置
         </button>
       </footer>

@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SKUNKED Open Data Confirmed Phishing Domains",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "domain",
+      "status",
+      "source",
+      "firstSeenAt",
+      "lastSeenAt",
+      "reviewedAt",
+      "reviewer"
+    ],
+    "properties": {
+      "domain": {
+        "type": "string",
+        "pattern": "^(?!www\\.)[a-z0-9-]+(\\.[a-z0-9-]+)+$"
+      },
+      "targetAppId": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      },
+      "status": {
+        "type": "string",
+        "enum": ["confirmed"]
+      },
+      "source": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 64
+      },
+      "firstSeenAt": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "lastSeenAt": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "reviewedAt": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "reviewer": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 64
+      }
+    }
+  }
+}

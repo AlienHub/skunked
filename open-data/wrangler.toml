@@ -1,0 +1,3 @@
+name = "skunked-open-data"
+pages_build_output_dir = "dist-ui"
+compatibility_date = "2026-06-05"

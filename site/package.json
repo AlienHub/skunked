@@ -1,0 +1,15 @@
+{
+  "name": "skunked-site",
+  "version": "1.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "SKUNKED landing page and open dataset browser",
+  "scripts": {
+    "dev": "npx --yes serve . -p 4173",
+    "build": "node -e \"process.exit(0)\"",
+    "typecheck": "node -e \"process.exit(0)\"",
+    "lint": "prettier --check \"**/*.{html,css,js,md}\"",
+    "test": "node -e \"process.exit(0)\"",
+    "format:check": "prettier --check \"**/*.{html,css,js,md}\""
+  }
+}

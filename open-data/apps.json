@@ -1,0 +1,2087 @@
+[
+  {
+    "id": "feishu",
+    "slug": "feishu",
+    "name": "飞书",
+    "nameEn": "Feishu",
+    "category": "communication",
+    "officialDomains": [
+      "feishu.cn",
+      "larksuite.com"
+    ],
+    "officialUrls": [
+      "https://www.feishu.cn",
+      "https://www.larksuite.com"
+    ],
+    "keywords": [
+      "飞书",
+      "feishu",
+      "lark",
+      "即时通讯",
+      "协作",
+      "会议"
+    ]
+  },
+  {
+    "id": "dingtalk",
+    "slug": "dingtalk",
+    "name": "钉钉",
+    "nameEn": "DingTalk",
+    "category": "communication",
+    "officialDomains": [
+      "dingtalk.com",
+      "aliwork.com"
+    ],
+    "officialUrls": [
+      "https://www.dingtalk.com",
+      "https://www.aliwork.com"
+    ],
+    "keywords": [
+      "钉钉",
+      "dingtalk",
+      "阿里",
+      "即时通讯",
+      "办公",
+      "会议"
+    ]
+  },
+  {
+    "id": "wechat",
+    "slug": "wechat",
+    "name": "微信",
+    "nameEn": "WeChat",
+    "category": "communication",
+    "officialDomains": [
+      "weixin.qq.com",
+      "wechat.com",
+      "wx.qq.com"
+    ],
+    "officialUrls": [
+      "https://weixin.qq.com",
+      "https://www.wechat.com"
+    ],
+    "keywords": [
+      "微信",
+      "wechat",
+      "weixin",
+      "腾讯",
+      "聊天",
+      "IM"
+    ]
+  },
+  {
+    "id": "qq",
+    "slug": "qq",
+    "name": "QQ",
+    "nameEn": "QQ",
+    "category": "communication",
+    "officialDomains": [
+      "qq.com",
+      "im.qq.com",
+      "tencent.com"
+    ],
+    "officialUrls": [
+      "https://im.qq.com",
+      "https://www.qq.com"
+    ],
+    "keywords": [
+      "qq",
+      "腾讯",
+      "即时通讯",
+      "聊天",
+      "IM"
+    ]
+  },
+  {
+    "id": "wecom",
+    "slug": "wecom",
+    "name": "企业微信",
+    "nameEn": "WeCom",
+    "category": "communication",
+    "officialDomains": [
+      "wecom.qq.com",
+      "qq.com"
+    ],
+    "officialUrls": [
+      "https://wecom.qq.com"
+    ],
+    "keywords": [
+      "企业微信",
+      "wecom",
+      "腾讯",
+      "办公",
+      "协同",
+      "IM"
+    ]
+  },
+  {
+    "id": "tim",
+    "slug": "tim",
+    "name": "TIM",
+    "nameEn": "TIM",
+    "category": "communication",
+    "officialDomains": [
+      "tim.qq.com",
+      "qq.com"
+    ],
+    "officialUrls": [
+      "https://tim.qq.com"
+    ],
+    "keywords": [
+      "tim",
+      "腾讯",
+      "qq",
+      "即时通讯",
+      "办公"
+    ]
+  },
+  {
+    "id": "tencent-meeting",
+    "slug": "tencent-meeting",
+    "name": "腾讯会议",
+    "nameEn": "Tencent Meeting",
+    "category": "communication",
+    "officialDomains": [
+      "meeting.tencent.com",
+      "tencent.com"
+    ],
+    "officialUrls": [
+      "https://meeting.tencent.com"
+    ],
+    "keywords": [
+      "腾讯会议",
+      "会议",
+      "视频会议",
+      "tencent",
+      "协作"
+    ]
+  },
+  {
+    "id": "zoom",
+    "slug": "zoom",
+    "name": "Zoom",
+    "nameEn": "Zoom",
+    "category": "communication",
+    "officialDomains": [
+      "zoom.us"
+    ],
+    "officialUrls": [
+      "https://zoom.us"
+    ],
+    "keywords": [
+      "zoom",
+      "视频会议",
+      "会议",
+      "沟通",
+      "协作"
+    ]
+  },
+  {
+    "id": "microsoft-teams",
+    "slug": "microsoft-teams",
+    "name": "Microsoft Teams",
+    "nameEn": "Microsoft Teams",
+    "category": "communication",
+    "officialDomains": [
+      "teams.microsoft.com",
+      "microsoft.com"
+    ],
+    "officialUrls": [
+      "https://www.microsoft.com/microsoft-teams"
+    ],
+    "keywords": [
+      "teams",
+      "microsoft",
+      "会议",
+      "协作",
+      "即时通讯"
+    ]
+  },
+  {
+    "id": "slack",
+    "slug": "slack",
+    "name": "Slack",
+    "nameEn": "Slack",
+    "category": "communication",
+    "officialDomains": [
+      "slack.com"
+    ],
+    "officialUrls": [
+      "https://slack.com"
+    ],
+    "keywords": [
+      "slack",
+      "团队沟通",
+      "协作",
+      "IM",
+      "聊天"
+    ]
+  },
+  {
+    "id": "telegram",
+    "slug": "telegram",
+    "name": "Telegram",
+    "nameEn": "Telegram",
+    "category": "communication",
+    "officialDomains": [
+      "telegram.org"
+    ],
+    "officialUrls": [
+      "https://telegram.org"
+    ],
+    "keywords": [
+      "telegram",
+      "聊天",
+      "即时通讯",
+      "群组",
+      "频道"
+    ]
+  },
+  {
+    "id": "whatsapp",
+    "slug": "whatsapp",
+    "name": "WhatsApp",
+    "nameEn": "WhatsApp",
+    "category": "communication",
+    "officialDomains": [
+      "whatsapp.com"
+    ],
+    "officialUrls": [
+      "https://www.whatsapp.com"
+    ],
+    "keywords": [
+      "whatsapp",
+      "聊天",
+      "即时通讯",
+      "语音",
+      "视频"
+    ]
+  },
+  {
+    "id": "signal",
+    "slug": "signal",
+    "name": "Signal",
+    "nameEn": "Signal",
+    "category": "communication",
+    "officialDomains": [
+      "signal.org"
+    ],
+    "officialUrls": [
+      "https://signal.org"
+    ],
+    "keywords": [
+      "signal",
+      "聊天",
+      "加密通信",
+      "即时通讯",
+      "隐私"
+    ]
+  },
+  {
+    "id": "discord",
+    "slug": "discord",
+    "name": "Discord",
+    "nameEn": "Discord",
+    "category": "communication",
+    "officialDomains": [
+      "discord.com"
+    ],
+    "officialUrls": [
+      "https://discord.com"
+    ],
+    "keywords": [
+      "discord",
+      "语音",
+      "聊天",
+      "社区",
+      "即时通讯"
+    ]
+  },
+  {
+    "id": "skype",
+    "slug": "skype",
+    "name": "Skype",
+    "nameEn": "Skype",
+    "category": "communication",
+    "officialDomains": [
+      "skype.com"
+    ],
+    "officialUrls": [
+      "https://www.skype.com"
+    ],
+    "keywords": [
+      "skype",
+      "视频会议",
+      "语音通话",
+      "即时通讯",
+      "沟通"
+    ]
+  },
+  {
+    "id": "line",
+    "slug": "line",
+    "name": "LINE",
+    "nameEn": "LINE",
+    "category": "communication",
+    "officialDomains": [
+      "line.me"
+    ],
+    "officialUrls": [
+      "https://line.me"
+    ],
+    "keywords": [
+      "line",
+      "聊天",
+      "即时通讯",
+      "社交",
+      "通话"
+    ]
+  },
+  {
+    "id": "xiangrikui",
+    "slug": "sunlogin",
+    "name": "向日葵",
+    "nameEn": "Sunlogin",
+    "category": "remote_control",
+    "officialDomains": [
+      "oray.com",
+      "sunlogin.oray.com"
+    ],
+    "officialUrls": [
+      "https://sunlogin.oray.com",
+      "https://www.oray.com"
+    ],
+    "keywords": [
+      "向日葵",
+      "sunlogin",
+      "oray",
+      "远程",
+      "控制"
+    ]
+  },
+  {
+    "id": "todesk",
+    "slug": "todesk",
+    "name": "ToDesk",
+    "nameEn": "ToDesk",
+    "category": "remote_control",
+    "officialDomains": [
+      "todesk.com"
+    ],
+    "officialUrls": [
+      "https://www.todesk.com"
+    ],
+    "keywords": [
+      "todesk",
+      "远程",
+      "控制",
+      "远程桌面",
+      "协助"
+    ]
+  },
+  {
+    "id": "teamviewer",
+    "slug": "teamviewer",
+    "name": "TeamViewer",
+    "nameEn": "TeamViewer",
+    "category": "remote_control",
+    "officialDomains": [
+      "teamviewer.com"
+    ],
+    "officialUrls": [
+      "https://www.teamviewer.com"
+    ],
+    "keywords": [
+      "teamviewer",
+      "远程",
+      "控制",
+      "远程桌面",
+      "运维"
+    ]
+  },
+  {
+    "id": "anydesk",
+    "slug": "anydesk",
+    "name": "AnyDesk",
+    "nameEn": "AnyDesk",
+    "category": "remote_control",
+    "officialDomains": [
+      "anydesk.com"
+    ],
+    "officialUrls": [
+      "https://anydesk.com"
+    ],
+    "keywords": [
+      "anydesk",
+      "远程",
+      "控制",
+      "远程桌面",
+      "支持"
+    ]
+  },
+  {
+    "id": "rustdesk",
+    "slug": "rustdesk",
+    "name": "RustDesk",
+    "nameEn": "RustDesk",
+    "category": "remote_control",
+    "officialDomains": [
+      "rustdesk.com",
+      "rustdesk.org"
+    ],
+    "officialUrls": [
+      "https://rustdesk.com"
+    ],
+    "keywords": [
+      "rustdesk",
+      "远程",
+      "控制",
+      "开源",
+      "远程桌面"
+    ]
+  },
+  {
+    "id": "parsec",
+    "slug": "parsec",
+    "name": "Parsec",
+    "nameEn": "Parsec",
+    "category": "remote_control",
+    "officialDomains": [
+      "parsec.app"
+    ],
+    "officialUrls": [
+      "https://parsec.app"
+    ],
+    "keywords": [
+      "parsec",
+      "远程",
+      "低延迟",
+      "串流",
+      "控制"
+    ]
+  },
+  {
+    "id": "splashtop",
+    "slug": "splashtop",
+    "name": "Splashtop",
+    "nameEn": "Splashtop",
+    "category": "remote_control",
+    "officialDomains": [
+      "splashtop.com"
+    ],
+    "officialUrls": [
+      "https://www.splashtop.com"
+    ],
+    "keywords": [
+      "splashtop",
+      "远程",
+      "控制",
+      "远程桌面",
+      "协助"
+    ]
+  },
+  {
+    "id": "chrome-remote-desktop",
+    "slug": "chrome-remote-desktop",
+    "name": "Chrome 远程桌面",
+    "nameEn": "Chrome Remote Desktop",
+    "category": "remote_control",
+    "officialDomains": [
+      "remotedesktop.google.com",
+      "google.com"
+    ],
+    "officialUrls": [
+      "https://remotedesktop.google.com"
+    ],
+    "keywords": [
+      "chrome",
+      "远程桌面",
+      "remote desktop",
+      "google",
+      "远程"
+    ]
+  },
+  {
+    "id": "360-safe",
+    "slug": "360-safe-guard",
+    "name": "360安全卫士",
+    "nameEn": "360 Safe Guard",
+    "category": "security",
+    "officialDomains": [
+      "360.cn",
+      "sd.360.cn"
+    ],
+    "officialUrls": [
+      "https://www.360.cn",
+      "https://sd.360.cn"
+    ],
+    "keywords": [
+      "360",
+      "安全卫士",
+      "杀毒",
+      "防护",
+      "木马"
+    ]
+  },
+  {
+    "id": "tencent-pc-manager",
+    "slug": "tencent-pc-manager",
+    "name": "腾讯电脑管家",
+    "nameEn": "Tencent PC Manager",
+    "category": "security",
+    "officialDomains": [
+      "pc.qq.com",
+      "guanjia.qq.com",
+      "qq.com"
+    ],
+    "officialUrls": [
+      "https://guanjia.qq.com",
+      "https://pc.qq.com"
+    ],
+    "keywords": [
+      "电脑管家",
+      "腾讯",
+      "杀毒",
+      "安全",
+      "防护"
+    ]
+  },
+  {
+    "id": "huorong",
+    "slug": "huorong",
+    "name": "火绒安全",
+    "nameEn": "Huorong",
+    "category": "security",
+    "officialDomains": [
+      "huorong.cn"
+    ],
+    "officialUrls": [
+      "https://www.huorong.cn"
+    ],
+    "keywords": [
+      "火绒",
+      "安全",
+      "杀毒",
+      "防护",
+      "病毒"
+    ]
+  },
+  {
+    "id": "kingsoft-duba",
+    "slug": "kingsoft-duba",
+    "name": "金山毒霸",
+    "nameEn": "Kingsoft Antivirus",
+    "category": "security",
+    "officialDomains": [
+      "duba.net"
+    ],
+    "officialUrls": [
+      "https://www.duba.net"
+    ],
+    "keywords": [
+      "金山毒霸",
+      "duba",
+      "杀毒",
+      "安全",
+      "防护"
+    ]
+  },
+  {
+    "id": "kaspersky",
+    "slug": "kaspersky",
+    "name": "卡巴斯基",
+    "nameEn": "Kaspersky",
+    "category": "security",
+    "officialDomains": [
+      "kaspersky.com"
+    ],
+    "officialUrls": [
+      "https://www.kaspersky.com"
+    ],
+    "keywords": [
+      "kaspersky",
+      "卡巴斯基",
+      "安全",
+      "杀毒",
+      "防护"
+    ]
+  },
+  {
+    "id": "bitdefender",
+    "slug": "bitdefender",
+    "name": "Bitdefender",
+    "nameEn": "Bitdefender",
+    "category": "security",
+    "officialDomains": [
+      "bitdefender.com"
+    ],
+    "officialUrls": [
+      "https://www.bitdefender.com"
+    ],
+    "keywords": [
+      "bitdefender",
+      "安全",
+      "杀毒",
+      "防护",
+      "终端安全"
+    ]
+  },
+  {
+    "id": "norton",
+    "slug": "norton",
+    "name": "Norton",
+    "nameEn": "Norton",
+    "category": "security",
+    "officialDomains": [
+      "norton.com"
+    ],
+    "officialUrls": [
+      "https://us.norton.com"
+    ],
+    "keywords": [
+      "norton",
+      "安全",
+      "杀毒",
+      "防护",
+      "网络安全"
+    ]
+  },
+  {
+    "id": "avast",
+    "slug": "avast",
+    "name": "Avast",
+    "nameEn": "Avast",
+    "category": "security",
+    "officialDomains": [
+      "avast.com"
+    ],
+    "officialUrls": [
+      "https://www.avast.com"
+    ],
+    "keywords": [
+      "avast",
+      "安全",
+      "杀毒",
+      "防护",
+      "病毒"
+    ]
+  },
+  {
+    "id": "malwarebytes",
+    "slug": "malwarebytes",
+    "name": "Malwarebytes",
+    "nameEn": "Malwarebytes",
+    "category": "security",
+    "officialDomains": [
+      "malwarebytes.com"
+    ],
+    "officialUrls": [
+      "https://www.malwarebytes.com"
+    ],
+    "keywords": [
+      "malwarebytes",
+      "安全",
+      "恶意软件",
+      "防护",
+      "清理"
+    ]
+  },
+  {
+    "id": "1password",
+    "slug": "1password",
+    "name": "1Password",
+    "nameEn": "1Password",
+    "category": "security",
+    "officialDomains": [
+      "1password.com"
+    ],
+    "officialUrls": [
+      "https://1password.com"
+    ],
+    "keywords": [
+      "1password",
+      "密码管理",
+      "安全",
+      "凭据",
+      "账户"
+    ]
+  },
+  {
+    "id": "keepassxc",
+    "slug": "keepassxc",
+    "name": "KeePassXC",
+    "nameEn": "KeePassXC",
+    "category": "security",
+    "officialDomains": [
+      "keepassxc.org"
+    ],
+    "officialUrls": [
+      "https://keepassxc.org"
+    ],
+    "keywords": [
+      "keepassxc",
+      "密码管理",
+      "安全",
+      "开源",
+      "离线"
+    ]
+  },
+  {
+    "id": "wps",
+    "slug": "wps-office",
+    "name": "WPS Office",
+    "nameEn": "WPS",
+    "category": "office",
+    "officialDomains": [
+      "wps.cn",
+      "kingsoft.com",
+      "wps.com"
+    ],
+    "officialUrls": [
+      "https://www.wps.cn",
+      "https://www.wps.com"
+    ],
+    "keywords": [
+      "wps",
+      "office",
+      "金山",
+      "文档",
+      "表格",
+      "演示"
+    ]
+  },
+  {
+    "id": "microsoft-office",
+    "slug": "microsoft-office",
+    "name": "Microsoft Office",
+    "nameEn": "Microsoft Office",
+    "category": "office",
+    "officialDomains": [
+      "microsoft.com",
+      "office.com"
+    ],
+    "officialUrls": [
+      "https://www.microsoft.com/microsoft-365",
+      "https://www.office.com"
+    ],
+    "keywords": [
+      "office",
+      "microsoft",
+      "word",
+      "excel",
+      "powerpoint",
+      "办公"
+    ]
+  },
+  {
+    "id": "libreoffice",
+    "slug": "libreoffice",
+    "name": "LibreOffice",
+    "nameEn": "LibreOffice",
+    "category": "office",
+    "officialDomains": [
+      "libreoffice.org",
+      "documentfoundation.org"
+    ],
+    "officialUrls": [
+      "https://www.libreoffice.org"
+    ],
+    "keywords": [
+      "libreoffice",
+      "办公",
+      "文档",
+      "表格",
+      "演示",
+      "开源"
+    ]
+  },
+  {
+    "id": "shimo",
+    "slug": "shimo",
+    "name": "石墨文档",
+    "nameEn": "Shimo",
+    "category": "office",
+    "officialDomains": [
+      "shimo.im"
+    ],
+    "officialUrls": [
+      "https://shimo.im"
+    ],
+    "keywords": [
+      "石墨",
+      "shimo",
+      "文档",
+      "协同",
+      "表格",
+      "办公"
+    ]
+  },
+  {
+    "id": "yuque",
+    "slug": "yuque",
+    "name": "语雀",
+    "nameEn": "Yuque",
+    "category": "office",
+    "officialDomains": [
+      "yuque.com"
+    ],
+    "officialUrls": [
+      "https://www.yuque.com"
+    ],
+    "keywords": [
+      "语雀",
+      "yuque",
+      "知识库",
+      "文档",
+      "笔记",
+      "协作"
+    ]
+  },
+  {
+    "id": "youdao-note",
+    "slug": "youdao-note",
+    "name": "有道云笔记",
+    "nameEn": "Youdao Note",
+    "category": "office",
+    "officialDomains": [
+      "youdao.com",
+      "note.youdao.com"
+    ],
+    "officialUrls": [
+      "https://note.youdao.com",
+      "https://www.youdao.com"
+    ],
+    "keywords": [
+      "有道云笔记",
+      "youdao",
+      "笔记",
+      "同步",
+      "知识管理"
+    ]
+  },
+  {
+    "id": "evernote",
+    "slug": "evernote",
+    "name": "印象笔记",
+    "nameEn": "Evernote",
+    "category": "office",
+    "officialDomains": [
+      "evernote.com",
+      "yinxiang.com"
+    ],
+    "officialUrls": [
+      "https://evernote.com",
+      "https://www.yinxiang.com"
+    ],
+    "keywords": [
+      "印象笔记",
+      "evernote",
+      "笔记",
+      "同步",
+      "知识管理"
+    ]
+  },
+  {
+    "id": "notion",
+    "slug": "notion",
+    "name": "Notion",
+    "nameEn": "Notion",
+    "category": "office",
+    "officialDomains": [
+      "notion.so"
+    ],
+    "officialUrls": [
+      "https://www.notion.so"
+    ],
+    "keywords": [
+      "notion",
+      "笔记",
+      "知识库",
+      "协作",
+      "数据库"
+    ]
+  },
+  {
+    "id": "obsidian",
+    "slug": "obsidian",
+    "name": "Obsidian",
+    "nameEn": "Obsidian",
+    "category": "office",
+    "officialDomains": [
+      "obsidian.md"
+    ],
+    "officialUrls": [
+      "https://obsidian.md"
+    ],
+    "keywords": [
+      "obsidian",
+      "笔记",
+      "知识管理",
+      "双链",
+      "markdown"
+    ]
+  },
+  {
+    "id": "wolai",
+    "slug": "wolai",
+    "name": "我来",
+    "nameEn": "Wolai",
+    "category": "office",
+    "officialDomains": [
+      "wolai.com"
+    ],
+    "officialUrls": [
+      "https://www.wolai.com"
+    ],
+    "keywords": [
+      "wolai",
+      "我来",
+      "笔记",
+      "文档",
+      "知识库"
+    ]
+  },
+  {
+    "id": "typora",
+    "slug": "typora",
+    "name": "Typora",
+    "nameEn": "Typora",
+    "category": "office",
+    "officialDomains": [
+      "typora.io"
+    ],
+    "officialUrls": [
+      "https://typora.io"
+    ],
+    "keywords": [
+      "typora",
+      "markdown",
+      "编辑器",
+      "笔记",
+      "文档"
+    ]
+  },
+  {
+    "id": "baidu-netdisk",
+    "slug": "baidu-netdisk",
+    "name": "百度网盘",
+    "nameEn": "Baidu Netdisk",
+    "category": "office",
+    "officialDomains": [
+      "pan.baidu.com",
+      "baidu.com"
+    ],
+    "officialUrls": [
+      "https://pan.baidu.com",
+      "https://www.baidu.com"
+    ],
+    "keywords": [
+      "百度网盘",
+      "网盘",
+      "云盘",
+      "同步",
+      "存储"
+    ]
+  },
+  {
+    "id": "aliyun-drive",
+    "slug": "aliyun-drive",
+    "name": "阿里云盘",
+    "nameEn": "Aliyun Drive",
+    "category": "office",
+    "officialDomains": [
+      "aliyundrive.com",
+      "alipan.com"
+    ],
+    "officialUrls": [
+      "https://www.aliyundrive.com",
+      "https://www.alipan.com"
+    ],
+    "keywords": [
+      "阿里云盘",
+      "网盘",
+      "云盘",
+      "存储",
+      "同步"
+    ]
+  },
+  {
+    "id": "quark-drive",
+    "slug": "quark-drive",
+    "name": "夸克网盘",
+    "nameEn": "Quark Drive",
+    "category": "office",
+    "officialDomains": [
+      "quark.cn",
+      "pan.quark.cn"
+    ],
+    "officialUrls": [
+      "https://pan.quark.cn",
+      "https://www.quark.cn"
+    ],
+    "keywords": [
+      "夸克",
+      "夸克网盘",
+      "网盘",
+      "云盘",
+      "存储"
+    ]
+  },
+  {
+    "id": "tianyi-cloud",
+    "slug": "tianyi-cloud",
+    "name": "天翼云盘",
+    "nameEn": "Tianyi Cloud",
+    "category": "office",
+    "officialDomains": [
+      "cloud.189.cn",
+      "189.cn"
+    ],
+    "officialUrls": [
+      "https://cloud.189.cn"
+    ],
+    "keywords": [
+      "天翼云盘",
+      "网盘",
+      "云盘",
+      "电信",
+      "存储"
+    ]
+  },
+  {
+    "id": "mobile-cloud",
+    "slug": "mobile-cloud",
+    "name": "中国移动云盘",
+    "nameEn": "Mobile Cloud",
+    "category": "office",
+    "officialDomains": [
+      "yun.139.com",
+      "139.com"
+    ],
+    "officialUrls": [
+      "https://yun.139.com"
+    ],
+    "keywords": [
+      "移动云盘",
+      "网盘",
+      "云盘",
+      "中国移动",
+      "存储"
+    ]
+  },
+  {
+    "id": "nutstore",
+    "slug": "nutstore",
+    "name": "坚果云",
+    "nameEn": "Nutstore",
+    "category": "office",
+    "officialDomains": [
+      "jianguoyun.com"
+    ],
+    "officialUrls": [
+      "https://www.jianguoyun.com"
+    ],
+    "keywords": [
+      "坚果云",
+      "nutstore",
+      "网盘",
+      "同步",
+      "云盘"
+    ]
+  },
+  {
+    "id": "drive-115",
+    "slug": "115-drive",
+    "name": "115网盘",
+    "nameEn": "115 Drive",
+    "category": "office",
+    "officialDomains": [
+      "115.com"
+    ],
+    "officialUrls": [
+      "https://115.com"
+    ],
+    "keywords": [
+      "115",
+      "网盘",
+      "云盘",
+      "存储",
+      "同步"
+    ]
+  },
+  {
+    "id": "xunlei-drive",
+    "slug": "xunlei-drive",
+    "name": "迅雷云盘",
+    "nameEn": "Xunlei Drive",
+    "category": "office",
+    "officialDomains": [
+      "xunlei.com",
+      "pan.xunlei.com"
+    ],
+    "officialUrls": [
+      "https://pan.xunlei.com",
+      "https://www.xunlei.com"
+    ],
+    "keywords": [
+      "迅雷云盘",
+      "迅雷",
+      "网盘",
+      "云盘",
+      "下载"
+    ]
+  },
+  {
+    "id": "onedrive",
+    "slug": "onedrive",
+    "name": "OneDrive",
+    "nameEn": "OneDrive",
+    "category": "office",
+    "officialDomains": [
+      "onedrive.live.com",
+      "microsoft.com"
+    ],
+    "officialUrls": [
+      "https://onedrive.live.com",
+      "https://www.microsoft.com/microsoft-365/onedrive/online-cloud-storage"
+    ],
+    "keywords": [
+      "onedrive",
+      "网盘",
+      "云盘",
+      "微软",
+      "同步"
+    ]
+  },
+  {
+    "id": "icloud",
+    "slug": "icloud",
+    "name": "iCloud",
+    "nameEn": "iCloud",
+    "category": "office",
+    "officialDomains": [
+      "icloud.com",
+      "apple.com"
+    ],
+    "officialUrls": [
+      "https://www.icloud.com",
+      "https://www.apple.com/icloud"
+    ],
+    "keywords": [
+      "icloud",
+      "网盘",
+      "云盘",
+      "苹果",
+      "同步"
+    ]
+  },
+  {
+    "id": "dropbox",
+    "slug": "dropbox",
+    "name": "Dropbox",
+    "nameEn": "Dropbox",
+    "category": "office",
+    "officialDomains": [
+      "dropbox.com"
+    ],
+    "officialUrls": [
+      "https://www.dropbox.com"
+    ],
+    "keywords": [
+      "dropbox",
+      "网盘",
+      "云盘",
+      "同步",
+      "文件"
+    ]
+  },
+  {
+    "id": "google-drive",
+    "slug": "google-drive",
+    "name": "Google Drive",
+    "nameEn": "Google Drive",
+    "category": "office",
+    "officialDomains": [
+      "drive.google.com",
+      "google.com"
+    ],
+    "officialUrls": [
+      "https://drive.google.com",
+      "https://www.google.com/drive"
+    ],
+    "keywords": [
+      "google drive",
+      "网盘",
+      "云盘",
+      "同步",
+      "存储"
+    ]
+  },
+  {
+    "id": "sogou-input",
+    "slug": "sogou-input",
+    "name": "搜狗输入法",
+    "nameEn": "Sogou Input",
+    "category": "office",
+    "officialDomains": [
+      "pinyin.sogou.com",
+      "sogou.com"
+    ],
+    "officialUrls": [
+      "https://pinyin.sogou.com",
+      "https://www.sogou.com"
+    ],
+    "keywords": [
+      "搜狗输入法",
+      "输入法",
+      "拼音",
+      "打字",
+      "sogou"
+    ]
+  },
+  {
+    "id": "baidu-input",
+    "slug": "baidu-input",
+    "name": "百度输入法",
+    "nameEn": "Baidu Input",
+    "category": "office",
+    "officialDomains": [
+      "shurufa.baidu.com",
+      "baidu.com"
+    ],
+    "officialUrls": [
+      "https://shurufa.baidu.com",
+      "https://www.baidu.com"
+    ],
+    "keywords": [
+      "百度输入法",
+      "输入法",
+      "拼音",
+      "打字",
+      "baidu"
+    ]
+  },
+  {
+    "id": "qq-input",
+    "slug": "qq-input",
+    "name": "QQ输入法",
+    "nameEn": "QQ Input",
+    "category": "office",
+    "officialDomains": [
+      "qq.pinyin.cn",
+      "qq.com"
+    ],
+    "officialUrls": [
+      "https://qq.pinyin.cn",
+      "https://www.qq.com"
+    ],
+    "keywords": [
+      "qq输入法",
+      "输入法",
+      "拼音",
+      "腾讯",
+      "打字"
+    ]
+  },
+  {
+    "id": "iflytek-input",
+    "slug": "iflytek-input",
+    "name": "讯飞输入法",
+    "nameEn": "iFlytek Input",
+    "category": "office",
+    "officialDomains": [
+      "srf.xunfei.cn",
+      "xunfei.cn"
+    ],
+    "officialUrls": [
+      "https://srf.xunfei.cn",
+      "https://www.xunfei.cn"
+    ],
+    "keywords": [
+      "讯飞输入法",
+      "输入法",
+      "语音输入",
+      "拼音",
+      "打字"
+    ]
+  },
+  {
+    "id": "rime-input",
+    "slug": "rime-input",
+    "name": "Rime 输入法",
+    "nameEn": "Rime",
+    "category": "office",
+    "officialDomains": [
+      "rime.im"
+    ],
+    "officialUrls": [
+      "https://rime.im"
+    ],
+    "keywords": [
+      "rime",
+      "输入法",
+      "中州韵",
+      "开源",
+      "拼音"
+    ]
+  },
+  {
+    "id": "figma",
+    "slug": "figma",
+    "name": "Figma",
+    "nameEn": "Figma",
+    "category": "office",
+    "officialDomains": [
+      "figma.com"
+    ],
+    "officialUrls": [
+      "https://www.figma.com"
+    ],
+    "keywords": [
+      "figma",
+      "设计",
+      "原型",
+      "协作",
+      "UI"
+    ]
+  },
+  {
+    "id": "sketch",
+    "slug": "sketch",
+    "name": "Sketch",
+    "nameEn": "Sketch",
+    "category": "office",
+    "officialDomains": [
+      "sketch.com"
+    ],
+    "officialUrls": [
+      "https://www.sketch.com"
+    ],
+    "keywords": [
+      "sketch",
+      "设计",
+      "UI",
+      "原型",
+      "mac"
+    ]
+  },
+  {
+    "id": "mastergo",
+    "slug": "mastergo",
+    "name": "MasterGo",
+    "nameEn": "MasterGo",
+    "category": "office",
+    "officialDomains": [
+      "mastergo.com"
+    ],
+    "officialUrls": [
+      "https://mastergo.com"
+    ],
+    "keywords": [
+      "mastergo",
+      "设计",
+      "原型",
+      "协作",
+      "国产"
+    ]
+  },
+  {
+    "id": "js-design",
+    "slug": "js-design",
+    "name": "即时设计",
+    "nameEn": "JS Design",
+    "category": "office",
+    "officialDomains": [
+      "js.design"
+    ],
+    "officialUrls": [
+      "https://js.design"
+    ],
+    "keywords": [
+      "即时设计",
+      "js design",
+      "设计",
+      "原型",
+      "协作"
+    ]
+  },
+  {
+    "id": "lanhu",
+    "slug": "lanhu",
+    "name": "蓝湖",
+    "nameEn": "Lanhu",
+    "category": "office",
+    "officialDomains": [
+      "lanhuapp.com"
+    ],
+    "officialUrls": [
+      "https://lanhuapp.com"
+    ],
+    "keywords": [
+      "蓝湖",
+      "lanhu",
+      "设计协作",
+      "标注",
+      "原型"
+    ]
+  },
+  {
+    "id": "modao",
+    "slug": "modao",
+    "name": "墨刀",
+    "nameEn": "MockingBot",
+    "category": "office",
+    "officialDomains": [
+      "modao.cc"
+    ],
+    "officialUrls": [
+      "https://modao.cc"
+    ],
+    "keywords": [
+      "墨刀",
+      "modao",
+      "原型",
+      "设计",
+      "协作"
+    ]
+  },
+  {
+    "id": "axure",
+    "slug": "axure",
+    "name": "Axure RP",
+    "nameEn": "Axure RP",
+    "category": "office",
+    "officialDomains": [
+      "axure.com"
+    ],
+    "officialUrls": [
+      "https://www.axure.com"
+    ],
+    "keywords": [
+      "axure",
+      "原型",
+      "交互设计",
+      "产品设计",
+      "线框图"
+    ]
+  },
+  {
+    "id": "canva",
+    "slug": "canva",
+    "name": "Canva 可画",
+    "nameEn": "Canva",
+    "category": "office",
+    "officialDomains": [
+      "canva.cn",
+      "canva.com"
+    ],
+    "officialUrls": [
+      "https://www.canva.cn",
+      "https://www.canva.com"
+    ],
+    "keywords": [
+      "canva",
+      "可画",
+      "设计",
+      "海报",
+      "模板"
+    ]
+  },
+  {
+    "id": "adobe-photoshop",
+    "slug": "adobe-photoshop",
+    "name": "Adobe Photoshop",
+    "nameEn": "Adobe Photoshop",
+    "category": "office",
+    "officialDomains": [
+      "adobe.com"
+    ],
+    "officialUrls": [
+      "https://www.adobe.com/products/photoshop.html"
+    ],
+    "keywords": [
+      "photoshop",
+      "ps",
+      "adobe",
+      "设计",
+      "修图"
+    ]
+  },
+  {
+    "id": "adobe-illustrator",
+    "slug": "adobe-illustrator",
+    "name": "Adobe Illustrator",
+    "nameEn": "Adobe Illustrator",
+    "category": "office",
+    "officialDomains": [
+      "adobe.com"
+    ],
+    "officialUrls": [
+      "https://www.adobe.com/products/illustrator.html"
+    ],
+    "keywords": [
+      "illustrator",
+      "ai",
+      "adobe",
+      "矢量",
+      "设计"
+    ]
+  },
+  {
+    "id": "adobe-xd",
+    "slug": "adobe-xd",
+    "name": "Adobe XD",
+    "nameEn": "Adobe XD",
+    "category": "office",
+    "officialDomains": [
+      "adobe.com"
+    ],
+    "officialUrls": [
+      "https://www.adobe.com/products/xd.html"
+    ],
+    "keywords": [
+      "adobe xd",
+      "xd",
+      "原型",
+      "设计",
+      "协作"
+    ]
+  },
+  {
+    "id": "processon",
+    "slug": "processon",
+    "name": "ProcessOn",
+    "nameEn": "ProcessOn",
+    "category": "office",
+    "officialDomains": [
+      "processon.com"
+    ],
+    "officialUrls": [
+      "https://www.processon.com"
+    ],
+    "keywords": [
+      "processon",
+      "流程图",
+      "思维导图",
+      "图表",
+      "协作"
+    ]
+  },
+  {
+    "id": "xmind",
+    "slug": "xmind",
+    "name": "Xmind",
+    "nameEn": "Xmind",
+    "category": "office",
+    "officialDomains": [
+      "xmind.cn",
+      "xmind.app"
+    ],
+    "officialUrls": [
+      "https://xmind.cn",
+      "https://xmind.app"
+    ],
+    "keywords": [
+      "xmind",
+      "思维导图",
+      "脑图",
+      "办公",
+      "效率"
+    ]
+  },
+  {
+    "id": "mindmaster",
+    "slug": "mindmaster",
+    "name": "亿图脑图",
+    "nameEn": "MindMaster",
+    "category": "office",
+    "officialDomains": [
+      "edrawsoft.cn",
+      "edrawsoft.com"
+    ],
+    "officialUrls": [
+      "https://www.edrawsoft.cn/mindmaster",
+      "https://www.edrawsoft.com/mindmaster"
+    ],
+    "keywords": [
+      "mindmaster",
+      "亿图脑图",
+      "思维导图",
+      "脑图",
+      "效率"
+    ]
+  },
+  {
+    "id": "vscode",
+    "slug": "visual-studio-code",
+    "name": "Visual Studio Code",
+    "nameEn": "Visual Studio Code",
+    "category": "office",
+    "officialDomains": [
+      "code.visualstudio.com",
+      "vscode.dev"
+    ],
+    "officialUrls": [
+      "https://code.visualstudio.com",
+      "https://vscode.dev"
+    ],
+    "keywords": [
+      "vscode",
+      "ide",
+      "编辑器",
+      "开发",
+      "微软"
+    ]
+  },
+  {
+    "id": "intellij-idea",
+    "slug": "intellij-idea",
+    "name": "IntelliJ IDEA",
+    "nameEn": "IntelliJ IDEA",
+    "category": "office",
+    "officialDomains": [
+      "jetbrains.com"
+    ],
+    "officialUrls": [
+      "https://www.jetbrains.com/idea"
+    ],
+    "keywords": [
+      "idea",
+      "jetbrains",
+      "ide",
+      "java",
+      "开发"
+    ]
+  },
+  {
+    "id": "pycharm",
+    "slug": "pycharm",
+    "name": "PyCharm",
+    "nameEn": "PyCharm",
+    "category": "office",
+    "officialDomains": [
+      "jetbrains.com"
+    ],
+    "officialUrls": [
+      "https://www.jetbrains.com/pycharm"
+    ],
+    "keywords": [
+      "pycharm",
+      "jetbrains",
+      "python",
+      "ide",
+      "开发"
+    ]
+  },
+  {
+    "id": "webstorm",
+    "slug": "webstorm",
+    "name": "WebStorm",
+    "nameEn": "WebStorm",
+    "category": "office",
+    "officialDomains": [
+      "jetbrains.com"
+    ],
+    "officialUrls": [
+      "https://www.jetbrains.com/webstorm"
+    ],
+    "keywords": [
+      "webstorm",
+      "jetbrains",
+      "javascript",
+      "ide",
+      "开发"
+    ]
+  },
+  {
+    "id": "goland",
+    "slug": "goland",
+    "name": "GoLand",
+    "nameEn": "GoLand",
+    "category": "office",
+    "officialDomains": [
+      "jetbrains.com"
+    ],
+    "officialUrls": [
+      "https://www.jetbrains.com/go"
+    ],
+    "keywords": [
+      "goland",
+      "jetbrains",
+      "go",
+      "ide",
+      "开发"
+    ]
+  },
+  {
+    "id": "clion",
+    "slug": "clion",
+    "name": "CLion",
+    "nameEn": "CLion",
+    "category": "office",
+    "officialDomains": [
+      "jetbrains.com"
+    ],
+    "officialUrls": [
+      "https://www.jetbrains.com/clion"
+    ],
+    "keywords": [
+      "clion",
+      "jetbrains",
+      "c++",
+      "ide",
+      "开发"
+    ]
+  },
+  {
+    "id": "datagrip",
+    "slug": "datagrip",
+    "name": "DataGrip",
+    "nameEn": "DataGrip",
+    "category": "office",
+    "officialDomains": [
+      "jetbrains.com"
+    ],
+    "officialUrls": [
+      "https://www.jetbrains.com/datagrip"
+    ],
+    "keywords": [
+      "datagrip",
+      "jetbrains",
+      "数据库",
+      "sql",
+      "开发"
+    ]
+  },
+  {
+    "id": "android-studio",
+    "slug": "android-studio",
+    "name": "Android Studio",
+    "nameEn": "Android Studio",
+    "category": "office",
+    "officialDomains": [
+      "developer.android.com",
+      "android.com"
+    ],
+    "officialUrls": [
+      "https://developer.android.com/studio",
+      "https://www.android.com"
+    ],
+    "keywords": [
+      "android studio",
+      "android",
+      "ide",
+      "开发",
+      "移动"
+    ]
+  },
+  {
+    "id": "xcode",
+    "slug": "xcode",
+    "name": "Xcode",
+    "nameEn": "Xcode",
+    "category": "office",
+    "officialDomains": [
+      "developer.apple.com",
+      "apple.com"
+    ],
+    "officialUrls": [
+      "https://developer.apple.com/xcode",
+      "https://www.apple.com"
+    ],
+    "keywords": [
+      "xcode",
+      "ios",
+      "mac",
+      "ide",
+      "开发"
+    ]
+  },
+  {
+    "id": "hbuilderx",
+    "slug": "hbuilderx",
+    "name": "HBuilderX",
+    "nameEn": "HBuilderX",
+    "category": "office",
+    "officialDomains": [
+      "dcloud.io"
+    ],
+    "officialUrls": [
+      "https://www.dcloud.io/hbuilderx.html"
+    ],
+    "keywords": [
+      "hbuilderx",
+      "前端",
+      "uni-app",
+      "ide",
+      "开发"
+    ]
+  },
+  {
+    "id": "deveco-studio",
+    "slug": "deveco-studio",
+    "name": "DevEco Studio",
+    "nameEn": "DevEco Studio",
+    "category": "office",
+    "officialDomains": [
+      "developer.huawei.com",
+      "huawei.com"
+    ],
+    "officialUrls": [
+      "https://developer.huawei.com/consumer/cn/deveco-studio"
+    ],
+    "keywords": [
+      "deveco",
+      "huawei",
+      "鸿蒙",
+      "ide",
+      "开发"
+    ]
+  },
+  {
+    "id": "cursor",
+    "slug": "cursor",
+    "name": "Cursor",
+    "nameEn": "Cursor",
+    "category": "office",
+    "officialDomains": [
+      "cursor.com"
+    ],
+    "officialUrls": [
+      "https://cursor.com"
+    ],
+    "keywords": [
+      "cursor",
+      "ai",
+      "ide",
+      "编程",
+      "开发"
+    ]
+  },
+  {
+    "id": "sublime-text",
+    "slug": "sublime-text",
+    "name": "Sublime Text",
+    "nameEn": "Sublime Text",
+    "category": "office",
+    "officialDomains": [
+      "sublimetext.com",
+      "sublimehq.com"
+    ],
+    "officialUrls": [
+      "https://www.sublimetext.com",
+      "https://www.sublimehq.com"
+    ],
+    "keywords": [
+      "sublime",
+      "编辑器",
+      "代码",
+      "开发",
+      "轻量"
+    ]
+  },
+  {
+    "id": "notepad-plus-plus",
+    "slug": "notepad-plus-plus",
+    "name": "Notepad++",
+    "nameEn": "Notepad++",
+    "category": "office",
+    "officialDomains": [
+      "notepad-plus-plus.org"
+    ],
+    "officialUrls": [
+      "https://notepad-plus-plus.org"
+    ],
+    "keywords": [
+      "notepad++",
+      "编辑器",
+      "代码",
+      "开发",
+      "轻量"
+    ]
+  },
+  {
+    "id": "vim",
+    "slug": "vim",
+    "name": "Vim",
+    "nameEn": "Vim",
+    "category": "office",
+    "officialDomains": [
+      "vim.org"
+    ],
+    "officialUrls": [
+      "https://www.vim.org"
+    ],
+    "keywords": [
+      "vim",
+      "编辑器",
+      "终端",
+      "开发",
+      "文本"
+    ]
+  },
+  {
+    "id": "neovim",
+    "slug": "neovim",
+    "name": "Neovim",
+    "nameEn": "Neovim",
+    "category": "office",
+    "officialDomains": [
+      "neovim.io"
+    ],
+    "officialUrls": [
+      "https://neovim.io"
+    ],
+    "keywords": [
+      "neovim",
+      "编辑器",
+      "终端",
+      "开发",
+      "文本"
+    ]
+  },
+  {
+    "id": "navicat",
+    "slug": "navicat",
+    "name": "Navicat",
+    "nameEn": "Navicat",
+    "category": "office",
+    "officialDomains": [
+      "navicat.com"
+    ],
+    "officialUrls": [
+      "https://www.navicat.com"
+    ],
+    "keywords": [
+      "navicat",
+      "数据库",
+      "sql",
+      "管理",
+      "开发"
+    ]
+  },
+  {
+    "id": "dbeaver",
+    "slug": "dbeaver",
+    "name": "DBeaver",
+    "nameEn": "DBeaver",
+    "category": "office",
+    "officialDomains": [
+      "dbeaver.io"
+    ],
+    "officialUrls": [
+      "https://dbeaver.io"
+    ],
+    "keywords": [
+      "dbeaver",
+      "数据库",
+      "sql",
+      "管理",
+      "开发"
+    ]
+  },
+  {
+    "id": "postman",
+    "slug": "postman",
+    "name": "Postman",
+    "nameEn": "Postman",
+    "category": "office",
+    "officialDomains": [
+      "postman.com"
+    ],
+    "officialUrls": [
+      "https://www.postman.com"
+    ],
+    "keywords": [
+      "postman",
+      "api",
+      "调试",
+      "测试",
+      "开发"
+    ]
+  },
+  {
+    "id": "apifox",
+    "slug": "apifox",
+    "name": "Apifox",
+    "nameEn": "Apifox",
+    "category": "office",
+    "officialDomains": [
+      "apifox.com"
+    ],
+    "officialUrls": [
+      "https://apifox.com"
+    ],
+    "keywords": [
+      "apifox",
+      "api",
+      "调试",
+      "测试",
+      "开发"
+    ]
+  },
+  {
+    "id": "insomnia",
+    "slug": "insomnia",
+    "name": "Insomnia",
+    "nameEn": "Insomnia",
+    "category": "office",
+    "officialDomains": [
+      "insomnia.rest",
+      "konghq.com"
+    ],
+    "officialUrls": [
+      "https://insomnia.rest",
+      "https://konghq.com"
+    ],
+    "keywords": [
+      "insomnia",
+      "api",
+      "调试",
+      "测试",
+      "开发"
+    ]
+  },
+  {
+    "id": "xshell",
+    "slug": "xshell",
+    "name": "Xshell",
+    "nameEn": "Xshell",
+    "category": "office",
+    "officialDomains": [
+      "xshell.com",
+      "netsarang.com"
+    ],
+    "officialUrls": [
+      "https://www.xshell.com",
+      "https://www.netsarang.com"
+    ],
+    "keywords": [
+      "xshell",
+      "ssh",
+      "终端",
+      "远程",
+      "开发"
+    ]
+  },
+  {
+    "id": "termius",
+    "slug": "termius",
+    "name": "Termius",
+    "nameEn": "Termius",
+    "category": "office",
+    "officialDomains": [
+      "termius.com"
+    ],
+    "officialUrls": [
+      "https://termius.com"
+    ],
+    "keywords": [
+      "termius",
+      "ssh",
+      "终端",
+      "远程",
+      "开发"
+    ]
+  }
+]

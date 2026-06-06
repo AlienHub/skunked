@@ -1,0 +1,6 @@
+packages:
+  - "."
+  - "cloudflare-worker"
+  - "open-data"
+  - "open-data-worker"
+  - "site"

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SKUNKED Dataset Browser</title>
+    <meta name="description" content="浏览 SKUNKED 公开官方站点与确认钓鱼域名数据。" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script defer src="./dataset.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <header class="nav fade-in">
+        <a class="brand" href="./index.html"><span class="brand-dot"></span> SKUNKED</a>
+        <div class="nav-actions">
+          <a class="btn btn-ghost" href="./index.html">返回首页</a>
+          <a class="btn btn-primary" href="https://github.com" target="_blank" rel="noreferrer">贡献样本</a>
+        </div>
+      </header>
+
+      <section class="section fade-in">
+        <h2>公开数据集浏览器</h2>
+        <p>展示官方应用清单与人工确认钓鱼域名（host 级别）。</p>
+        <div class="meta-row">
+          <span>版本：<strong id="dataset-version" class="code">loading...</strong></span>
+          <span>更新时间：<strong id="dataset-updated" class="code">--</strong></span>
+          <span>数据源：<strong class="code" id="dataset-api">--</strong></span>
+        </div>
+      </section>
+
+      <section class="section fade-in">
+        <h2>官方应用清单</h2>
+        <div class="table-wrap">
+          <table class="table" id="apps-table">
+            <thead>
+              <tr>
+                <th>应用</th>
+                <th>分类</th>
+                <th>官方域名</th>
+                <th>关键词</th>
+              </tr>
+            </thead>
+            <tbody id="apps-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section fade-in">
+        <h2>已确认钓鱼域名</h2>
+        <div class="dataset-toolbar">
+          <input class="field" id="query" type="search" placeholder="搜索域名，如 wps-download" />
+          <select class="select" id="app-filter">
+            <option value="">全部目标应用</option>
+          </select>
+          <button class="btn btn-ghost" id="refresh">刷新</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table" id="phishing-table">
+            <thead>
+              <tr>
+                <th>域名</th>
+                <th>目标应用</th>
+                <th>来源</th>
+                <th>审核时间</th>
+              </tr>
+            </thead>
+            <tbody id="phishing-body"></tbody>
+          </table>
+        </div>
+
+        <div class="pagination">
+          <button id="prev-page">上一页</button>
+          <span id="page-info" class="code">第 1 页</span>
+          <button id="next-page">下一页</button>
+        </div>
+      </section>
+
+      <p class="footer">SKUNKED Open Dataset · CC BY 4.0</p>
+    </div>
+  </body>
+</html>
