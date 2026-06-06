@@ -1,4 +1,8 @@
-import { AnalysisCache, PhishingAnalysisResult, ExtensionStorage } from "../types"
+import {
+  AnalysisCache,
+  PhishingAnalysisResult,
+  ExtensionStorage
+} from "../types"
 
 const CACHE_KEY_PREFIX = "analysis_cache_"
 
@@ -104,10 +108,12 @@ export async function addToBlacklist(domain: string): Promise<void> {
  */
 export async function getSettings(): Promise<ExtensionStorage["settings"]> {
   const storage = await chrome.storage.local.get("settings")
-  return storage.settings || {
-    enableAI: true,
-    warningThreshold: 60,
-    blockThreshold: 90,
-    cacheExpiry: 86400000
-  }
+  return (
+    storage.settings || {
+      enableAI: false,
+      warningThreshold: 60,
+      blockThreshold: 90,
+      cacheExpiry: 86400000
+    }
+  )
 }

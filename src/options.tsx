@@ -1,355 +1,380 @@
-import { useEffect, useState } from "react"
 import "./options.css"
 
-interface AIConfig {
-  provider: "openai" | "anthropic"
-  apiKey: string
-  baseUrl: string
-  model: string
+import { useEffect, useState } from "react"
+
+interface RuntimeInfo {
+  datasetVersion?: string
 }
 
-interface Settings {
-  enableAI: boolean
-  warningThreshold: number
-  blockThreshold: number
+type ModelPresetId = "deepseek" | "kimi" | "glm" | "minimax" | "custom"
+
+interface ModelConfig {
+  enabled: boolean
+  preset: ModelPresetId
+  apiKey: string
+  baseUrl: string
+  modelId: string
+}
+
+const MODEL_PRESETS: Record<
+  ModelPresetId,
+  {
+    label: string
+    baseUrl: string
+    modelId: string
+  }
+> = {
+  deepseek: {
+    label: "DeepSeek",
+    baseUrl: "https://api.deepseek.com/v1",
+    modelId: "deepseek-chat"
+  },
+  kimi: {
+    label: "Kimi",
+    baseUrl: "https://api.moonshot.cn/v1",
+    modelId: "moonshot-v1-8k"
+  },
+  glm: {
+    label: "GLM",
+    baseUrl: "https://open.bigmodel.cn/api/paas/v4",
+    modelId: "glm-4-flash"
+  },
+  minimax: {
+    label: "MiniMax",
+    baseUrl: "https://api.minimax.io/v1",
+    modelId: "MiniMax-M1"
+  },
+  custom: {
+    label: "自定义",
+    baseUrl: "https://api.openai.com/v1",
+    modelId: "gpt-4o-mini"
+  }
+}
+
+const MODEL_PRESET_ORDER = Object.keys(MODEL_PRESETS) as ModelPresetId[]
+
+function inferPreset(baseUrl?: string): ModelPresetId {
+  if (!baseUrl) return "deepseek"
+  const normalized = baseUrl.replace(/\/$/, "")
+  const matchedPreset = MODEL_PRESET_ORDER.find(
+    (preset) => MODEL_PRESETS[preset].baseUrl.replace(/\/$/, "") === normalized
+  )
+
+  return matchedPreset || "custom"
+}
+
+function getLocalStorage(keys: string | string[]) {
+  return new Promise<Record<string, any>>((resolve) => {
+    chrome.storage.local.get(keys, resolve)
+  })
+}
+
+function setLocalStorage(items: Record<string, any>) {
+  return new Promise<void>((resolve) => {
+    chrome.storage.local.set(items, resolve)
+  })
 }
 
 function IndexOptions() {
-  const [config, setConfig] = useState<AIConfig>({
-    provider: "openai",
+  const [runtimeInfo, setRuntimeInfo] = useState<RuntimeInfo>({})
+  const [modelConfig, setModelConfig] = useState<ModelConfig>({
+    enabled: false,
+    preset: "deepseek",
     apiKey: "",
-    baseUrl: "https://api.openai.com/v1",
-    model: "gpt-4o-mini"
+    baseUrl: MODEL_PRESETS.deepseek.baseUrl,
+    modelId: MODEL_PRESETS.deepseek.modelId
   })
+  const [busy, setBusy] = useState(false)
+  const [modelBusy, setModelBusy] = useState(false)
+  const [message, setMessage] = useState("")
+  const [modelMessage, setModelMessage] = useState("")
 
-  const [settings, setSettings] = useState<Settings>({
-    enableAI: true,
-    warningThreshold: 60,
-    blockThreshold: 90
-  })
-
-  const [saved, setSaved] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
-
-  // Load saved config on mount
-  useEffect(() => {
-    chrome.storage.local.get(
-      ["aiProvider", "openaiApiKey", "anthropicApiKey", "baseUrl", "modelId", "settings"],
-      (data) => {
-        if (data.aiProvider) {
-          setConfig((prev) => ({ ...prev, provider: data.aiProvider }))
-        }
-        const apiKey = data.aiProvider === "anthropic" ? data.anthropicApiKey : data.openaiApiKey
-        if (apiKey) {
-          setConfig((prev) => ({ ...prev, apiKey }))
-        }
-        if (data.baseUrl) {
-          setConfig((prev) => ({ ...prev, baseUrl: data.baseUrl }))
-        }
-        if (data.modelId) {
-          setConfig((prev) => ({ ...prev, model: data.modelId }))
-        }
-        if (data.settings) {
-          setSettings(data.settings)
-        }
+  const load = () => {
+    chrome.runtime.sendMessage({ action: "get_runtime_info" }, (response) => {
+      if (response?.success) {
+        setRuntimeInfo(response.data)
       }
-    )
+    })
+
+    getLocalStorage([
+      "settings",
+      "aiProvider",
+      "openaiApiKey",
+      "baseUrl",
+      "modelId",
+      "modelPreset"
+    ]).then((storage) => {
+      const preset =
+        storage.modelPreset && MODEL_PRESETS[storage.modelPreset]
+          ? storage.modelPreset
+          : inferPreset(storage.baseUrl)
+      const presetConfig = MODEL_PRESETS[preset]
+      const apiKey = storage.openaiApiKey || ""
+
+      setModelConfig({
+        enabled: Boolean(storage.settings?.enableAI && apiKey),
+        preset,
+        apiKey,
+        baseUrl: storage.baseUrl || presetConfig.baseUrl,
+        modelId: storage.modelId || presetConfig.modelId
+      })
+    })
+  }
+
+  useEffect(() => {
+    load()
   }, [])
 
-  const handleSave = async () => {
-    const storageData: any = {
-      aiProvider: config.provider,
-      baseUrl: config.baseUrl,
-      modelId: config.model,
-      settings
-    }
-
-    if (config.provider === "openai") {
-      storageData.openaiApiKey = config.apiKey
-    } else {
-      storageData.anthropicApiKey = config.apiKey
-    }
-
-    await chrome.storage.local.set(storageData)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
-
-  const handleTest = async () => {
-    setTesting(true)
-    setTestResult(null)
-
-    try {
-      const url = config.baseUrl.replace(/\/$/, "") + "/chat/completions"
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${config.apiKey}`
-        },
-        body: JSON.stringify({
-          model: config.model,
-          messages: [
-            {
-              role: "user",
-              content: "测试连接"
-            }
-          ],
-          max_tokens: 10
-        })
-      })
-
-      if (response.ok) {
-        setTestResult({ success: true, message: "✅ 连接成功！API 配置有效" })
+  const syncOpenDataset = () => {
+    setBusy(true)
+    setMessage("")
+    chrome.runtime.sendMessage({ action: "sync_open_dataset" }, (response) => {
+      setBusy(false)
+      if (response?.success) {
+        setMessage("防护名单已更新")
+        load()
       } else {
-        const error = await response.text()
-        setTestResult({ success: false, message: `❌ 连接失败: ${response.status} - ${error.substring(0, 100)}` })
+        setMessage(response?.error || "更新失败，请稍后重试")
       }
-    } catch (error: any) {
-      setTestResult({ success: false, message: `❌ 连接失败: ${error.message}` })
-    } finally {
-      setTesting(false)
-    }
+    })
   }
 
-  const presets = [
-    {
-      name: "OpenAI 官方",
-      baseUrl: "https://api.openai.com/v1",
-      model: "gpt-4o-mini"
-    },
-    {
-      name: "Azure OpenAI",
-      baseUrl: "https://your-resource.openai.azure.com/openai/deployments/your-deployment",
-      model: "gpt-4o"
-    },
-    {
-      name: "Anthropic",
-      baseUrl: "https://api.anthropic.com",
-      model: "claude-3-haiku-20240307"
-    },
-    {
-      name: "DeepSeek",
-      baseUrl: "https://api.deepseek.com/v1",
-      model: "deepseek-chat"
-    },
-    {
-      name: "通义千问",
-      baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-      model: "qwen-plus"
-    },
-    {
-      name: "智谱 AI",
-      baseUrl: "https://open.bigmodel.cn/api/paas/v4",
-      model: "glm-4-flash"
-    },
-    {
-      name: "Moonshot (Kimi)",
-      baseUrl: "https://api.moonshot.cn/v1",
-      model: "moonshot-v1-8k"
-    }
-  ]
-
-  const applyPreset = (preset: typeof presets[0]) => {
-    setConfig((prev) => ({
-      ...prev,
-      baseUrl: preset.baseUrl,
-      model: preset.model
+  const selectModelPreset = (preset: ModelPresetId) => {
+    const presetConfig = MODEL_PRESETS[preset]
+    setModelMessage("")
+    setModelConfig((current) => ({
+      ...current,
+      preset,
+      baseUrl: preset === "custom" ? current.baseUrl : presetConfig.baseUrl,
+      modelId: preset === "custom" ? current.modelId : presetConfig.modelId
     }))
   }
 
+  const saveModelConfig = async () => {
+    setModelBusy(true)
+    setModelMessage("")
+
+    try {
+      const apiKey = modelConfig.apiKey.trim()
+      const baseUrl = modelConfig.baseUrl.trim().replace(/\/$/, "")
+      const modelId = modelConfig.modelId.trim()
+      const storage = await getLocalStorage("settings")
+      const settings = {
+        warningThreshold: 60,
+        blockThreshold: 90,
+        cacheExpiry: 86400000,
+        ...storage.settings,
+        enableAI: modelConfig.enabled && Boolean(apiKey)
+      }
+
+      await setLocalStorage({
+        settings,
+        aiProvider: "openai",
+        openaiApiKey: apiKey,
+        baseUrl,
+        modelId,
+        modelPreset: modelConfig.preset
+      })
+
+      setModelConfig((current) => ({
+        ...current,
+        enabled: settings.enableAI,
+        apiKey,
+        baseUrl,
+        modelId
+      }))
+      setModelMessage(
+        settings.enableAI
+          ? "大模型辅助识别已开启"
+          : "配置已保存，暂未启用大模型辅助识别"
+      )
+    } catch (error) {
+      setModelMessage(
+        error instanceof Error ? error.message : "保存失败，请稍后重试"
+      )
+    } finally {
+      setModelBusy(false)
+    }
+  }
+
   return (
-    <div className="options-container">
-      <div className="options-content">
-        <h1>⚙️ 空军 - 反钓鱼卫士配置</h1>
+    <main className="options-root">
+      <header className="settings-header">
+        <div className="brand-mark" aria-hidden="true">
+          KJ
+        </div>
+        <div>
+          <span className="eyebrow">防护已开启</span>
+          <h1>空军设置</h1>
+          <p>这里不需要复杂配置。保持开启即可自动识别可疑下载页。</p>
+        </div>
+      </header>
 
-        <section className="config-section">
-          <h2>🤖 AI 配置</h2>
+      <section className="hero-panel">
+        <div>
+          <h2>正在保护你的浏览器</h2>
+          <p>
+            空军会在你访问疑似假官网、钓鱼下载页或高仿域名时提醒你，并优先引导前往官方站点。
+          </p>
+        </div>
+        <span>已启用</span>
+      </section>
 
-          <div className="form-group">
-            <label>API 提供商</label>
-            <select
-              value={config.provider}
-              onChange={(e) => setConfig({ ...config, provider: e.target.value as "openai" | "anthropic" })}
-            >
-              <option value="openai">OpenAI 兼容接口</option>
-              <option value="anthropic">Anthropic Claude</option>
-            </select>
+      <section className="quick-grid">
+        <section className="panel">
+          <div className="panel-heading">
+            <h2>保护内容</h2>
           </div>
-
-          <div className="form-group">
-            <label>API Key *</label>
-            <input
-              type="password"
-              value={config.apiKey}
-              onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
-              placeholder="sk-..."
-            />
-            <small>您的 API 密钥将只存储在本地浏览器中</small>
-          </div>
-
-          <div className="form-group">
-            <label>Base URL *</label>
-            <input
-              type="text"
-              value={config.baseUrl}
-              onChange={(e) => setConfig({ ...config, baseUrl: e.target.value })}
-              placeholder="https://api.openai.com/v1"
-            />
-            <small>API 服务的基础 URL</small>
-          </div>
-
-          <div className="form-group">
-            <label>模型 ID *</label>
-            <input
-              type="text"
-              value={config.model}
-              onChange={(e) => setConfig({ ...config, model: e.target.value })}
-              placeholder="gpt-4o-mini"
-            />
-            <small>要使用的模型名称</small>
-          </div>
-
-          <div className="form-group">
-            <label>快速预设</label>
-            <div className="presets">
-              {presets.map((preset) => (
-                <button
-                  key={preset.name}
-                  className="preset-btn"
-                  onClick={() => applyPreset(preset)}
-                >
-                  {preset.name}
-                </button>
-              ))}
+          <div className="feature-list">
+            <div>
+              <strong>假官网识别</strong>
+              <span>发现冒充办公软件、远控软件的下载页面。</span>
+            </div>
+            <div>
+              <strong>可疑域名提醒</strong>
+              <span>检查高仿域名、诱导下载和异常后缀。</span>
+            </div>
+            <div>
+              <strong>官方入口引导</strong>
+              <span>风险页面会提供官方站点入口，减少误点。</span>
             </div>
           </div>
-
-          <div className="button-group">
-            <button className="btn btn-primary" onClick={handleSave}>
-              💾 保存配置
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={handleTest}
-              disabled={!config.apiKey || !config.baseUrl || testing}
-            >
-              {testing ? "🔄 测试中..." : "🧪 测试连接"}
-            </button>
-          </div>
-
-          {saved && <div className="success-message">✅ 配置已保存！</div>}
-          {testResult && (
-            <div className={`test-result ${testResult.success ? "success" : "error"}`}>
-              {testResult.message}
-            </div>
-          )}
         </section>
 
-        <section className="config-section">
-          <h2>🎯 检测阈值</h2>
-
-          <div className="form-group">
-            <label>警告阈值: {settings.warningThreshold}%</label>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={settings.warningThreshold}
-              onChange={(e) => setSettings({ ...settings, warningThreshold: Number(e.target.value) })}
-              className="slider"
-            />
-            <small>
-              置信度达到此值时显示黄色警告栏（建议：60%）
-            </small>
+        <section className="panel">
+          <div className="panel-heading">
+            <h2>防护名单</h2>
+            <span>{runtimeInfo.datasetVersion ? "可用" : "本地可用"}</span>
           </div>
-
-          <div className="form-group">
-            <label>拦截阈值: {settings.blockThreshold}%</label>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={settings.blockThreshold}
-              onChange={(e) => setSettings({ ...settings, blockThreshold: Number(e.target.value) })}
-              className="slider"
-            />
-            <small>
-              置信度达到此值时显示红色全屏拦截（建议：90%）
-            </small>
-          </div>
-
-          <div className="form-group checkbox-group">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={settings.enableAI}
-                onChange={(e) => setSettings({ ...settings, enableAI: e.target.checked })}
-              />
-              <span>启用 AI 语义分析</span>
-            </label>
-            <small>
-              关闭后将仅使用本地匹配和启发式分析，可能降低检测准确率
-            </small>
-          </div>
-
-          <button className="btn btn-primary" onClick={handleSave}>
-            💾 保存阈值设置
+          <p className="caption">
+            防护名单包含受保护品牌、官方域名和已确认风险域名。离线时仍会使用本地名单继续防护。
+          </p>
+          <button
+            className="primary-action"
+            onClick={syncOpenDataset}
+            disabled={busy}
+          >
+            {busy ? "更新中..." : "更新防护名单"}
           </button>
+          {message ? <p className="feedback">{message}</p> : null}
         </section>
+      </section>
 
-        <section className="config-section info-section">
-          <h2>📖 使用说明</h2>
-          <ol>
-            <li>
-              <strong>选择 API 提供商</strong>：大多数第三方服务商都兼容 OpenAI 接口，选择
-              "OpenAI 兼容接口"
-            </li>
-            <li>
-              <strong>输入 API Key</strong>：从你的服务商获取 API 密钥
-            </li>
-            <li>
-              <strong>配置 Base URL</strong>：输入服务商的 API 地址，可以从快速预设中选择
-            </li>
-            <li>
-              <strong>设置模型 ID</strong>：输入你要使用的模型名称
-            </li>
-            <li>
-              <strong>测试连接</strong>：点击"测试连接"按钮验证配置是否正确
-            </li>
-            <li>
-              <strong>保存配置</strong>：点击"保存配置"按钮应用设置
-            </li>
-          </ol>
+      <details className="panel advanced-panel">
+        <summary>
+          <span>
+            <strong>大模型辅助识别</strong>
+            <small>可选增强，需要你自己的 API Key</small>
+          </span>
+          <em>
+            {modelConfig.enabled && modelConfig.apiKey ? "已启用" : "未启用"}
+          </em>
+        </summary>
 
-          <h3>推荐的第三方服务商：</h3>
-          <ul>
-            <li>
-              <strong>DeepSeek</strong> -
-              <a href="https://platform.deepseek.com" target="_blank" rel="noopener">
-                https://platform.deepseek.com
-              </a>
-              {" "}（性价比高，支持长文本）
-            </li>
-            <li>
-              <strong>通义千问</strong> -
-              <a href="https://dashscope.aliyuncs.com" target="_blank" rel="noopener">
-                https://dashscope.aliyuncs.com
-              </a>
-              {" "}（阿里云，稳定可靠）
-            </li>
-            <li>
-              <strong>智谱 AI</strong> -
-              <a href="https://open.bigmodel.cn" target="_blank" rel="noopener">
-                https://open.bigmodel.cn
-              </a>
-              {" "}（国产大模型，有免费额度）
-            </li>
-          </ul>
-        </section>
-      </div>
-    </div>
+        <div className="model-form">
+          <label className="switch-row">
+            <input
+              type="checkbox"
+              checked={modelConfig.enabled}
+              onChange={(event) =>
+                setModelConfig((current) => ({
+                  ...current,
+                  enabled: event.target.checked
+                }))
+              }
+            />
+            <span>
+              <strong>使用大模型辅助判断不明确页面</strong>
+              <small>未配置时仍会使用本地规则和防护名单。</small>
+            </span>
+          </label>
+
+          <div className="preset-row" aria-label="模型服务商">
+            {MODEL_PRESET_ORDER.map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                className={modelConfig.preset === preset ? "selected" : ""}
+                onClick={() => selectModelPreset(preset)}
+              >
+                {MODEL_PRESETS[preset].label}
+              </button>
+            ))}
+          </div>
+
+          <div className="form-grid">
+            <label>
+              <span>API Key</span>
+              <input
+                type="password"
+                value={modelConfig.apiKey}
+                placeholder="粘贴你的平台 API Key"
+                onChange={(event) =>
+                  setModelConfig((current) => ({
+                    ...current,
+                    apiKey: event.target.value
+                  }))
+                }
+              />
+            </label>
+
+            <label>
+              <span>API 地址</span>
+              <input
+                type="url"
+                value={modelConfig.baseUrl}
+                onChange={(event) =>
+                  setModelConfig((current) => ({
+                    ...current,
+                    baseUrl: event.target.value
+                  }))
+                }
+              />
+            </label>
+
+            <label>
+              <span>模型名称</span>
+              <input
+                type="text"
+                value={modelConfig.modelId}
+                onChange={(event) =>
+                  setModelConfig((current) => ({
+                    ...current,
+                    modelId: event.target.value
+                  }))
+                }
+              />
+            </label>
+          </div>
+
+          <div className="form-footer">
+            <p>
+              Key
+              只保存在本机浏览器扩展存储中。不同平台模型名可能调整，可按控制台中的最新名称修改。
+            </p>
+            <button
+              className="secondary-action"
+              onClick={saveModelConfig}
+              disabled={modelBusy}
+            >
+              {modelBusy ? "保存中..." : "保存配置"}
+            </button>
+          </div>
+
+          {modelMessage ? <p className="feedback">{modelMessage}</p> : null}
+        </div>
+      </details>
+
+      <section className="panel policy-note">
+        <h2>遇到风险页面时</h2>
+        <div className="note-grid">
+          <p>高风险页面会被阻断。</p>
+          <p>中等风险页面会显示提醒。</p>
+          <p>你可以选择继续访问，但建议优先去官网。</p>
+          <p>关闭提醒不会关闭整体防护。</p>
+        </div>
+      </section>
+    </main>
   )
 }
 

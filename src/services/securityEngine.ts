@@ -1,4 +1,8 @@
-import { PhishingAnalysisResult, ExtractedDOMContent, OfficialSoftware } from "../types"
+import {
+  PhishingAnalysisResult,
+  ExtractedDOMContent,
+  OfficialSoftware
+} from "../types"
 import {
   isOfficialDomain,
   checkDomainSimilarity,
@@ -6,16 +10,110 @@ import {
   containsSensitiveKeywords,
   isSearchEngine
 } from "../utils/domainMatcher"
-import { getSoftwareByDomain, getAllKeywords } from "../data/officialRegistry"
+import {
+  getSoftwareByDomain,
+  OFFICIAL_SOFTWARE_REGISTRY
+} from "../data/officialRegistry"
 import { analyzeWithAI } from "./aiAnalyzer"
-import { getFromCache, saveToCache, getBlacklist, getSettings } from "../utils/cache"
+import {
+  getFromCache,
+  saveToCache,
+  getBlacklist,
+  getSettings
+} from "../utils/cache"
+
+function normalizeToken(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+}
+
+function getHost(url: string): string {
+  return url
+    .replace(/^https?:\/\//, "")
+    .split("/")[0]
+    .split(":")[0]
+    .toLowerCase()
+}
+
+function hostLabels(host: string): string[] {
+  return host
+    .split(".")
+    .flatMap((label) => label.split("-"))
+    .map(normalizeToken)
+    .filter(Boolean)
+}
+
+function brandTokensFor(software: OfficialSoftware): string[] {
+  return [software.id, software.nameEn, ...software.keywords]
+    .map(normalizeToken)
+    .filter((token) => token.length >= 3)
+}
+
+function matchProtectedBrandInHost(url: string): OfficialSoftware | undefined {
+  const host = getHost(url)
+  const compactHost = normalizeToken(host)
+
+  return OFFICIAL_SOFTWARE_REGISTRY.find((software) => {
+    const tokens = brandTokensFor(software)
+    return tokens.some((token) => compactHost.includes(token))
+  })
+}
+
+function hasDownloadOrOfficialIntent(url: string, pageTitle?: string): boolean {
+  const text = `${getHost(url)} ${pageTitle || ""}`.toLowerCase()
+  const compactText = normalizeToken(text)
+  const intentTokens = [
+    "download",
+    "downloads",
+    "setup",
+    "install",
+    "installer",
+    "client",
+    "desktop",
+    "pc",
+    "app",
+    "official",
+    "vip",
+    "free",
+    "下载",
+    "安装",
+    "客户端",
+    "电脑版",
+    "官网",
+    "官方"
+  ]
+
+  return intentTokens.some((token) => {
+    if (/[^\u0000-\u007f]/.test(token)) {
+      return text.includes(token)
+    }
+    return compactText.includes(token)
+  })
+}
+
+function isBrandHostMisuse(
+  url: string,
+  software: OfficialSoftware,
+  pageTitle?: string
+): boolean {
+  const host = getHost(url)
+  const labels = hostLabels(host)
+  const brandTokens = brandTokensFor(software)
+  const hostUsesBrand = brandTokens.some((token) => labels.includes(token))
+
+  return hostUsesBrand && hasDownloadOrOfficialIntent(url, pageTitle)
+}
 
 /**
  * Layer 1: Local Fast Match (<10ms)
  * - Whitelist check -> Allow immediately
  * - Blacklist check -> Block immediately
  */
-export async function layer1LocalMatch(url: string): Promise<PhishingAnalysisResult | null> {
+export async function layer1LocalMatch(
+  url: string
+): Promise<PhishingAnalysisResult | null> {
   // Check if it's a search engine (safe)
   if (isSearchEngine(url)) {
     console.log("✅ [Layer 1] 搜索引擎页面，直接通过")
@@ -72,7 +170,10 @@ export async function layer2Heuristics(
   if (similarityResult) {
     const software = getSoftwareByDomain(similarityResult.officialDomain)
     console.log("  ⚠️ [Layer 2] 发现相似域名！")
-    console.log("  ⚠️ [Layer 2] 相似度:", Math.round(similarityResult.score * 100) + "%")
+    console.log(
+      "  ⚠️ [Layer 2] 相似度:",
+      Math.round(similarityResult.score * 100) + "%"
+    )
     console.log("  ⚠️ [Layer 2] 相似域名:", similarityResult.officialDomain)
     return {
       isPhishing: true,
@@ -85,14 +186,31 @@ export async function layer2Heuristics(
   }
   console.log("  ✓ [Layer 2] 域名相似度检测通过")
 
-  console.log("  🔎 [Layer 2] 检查 Typosquatting 模式...")
-  // Check typosquatting patterns
-  if (detectTyposquattingPatterns(url)) {
-    console.log("  ⚠️ [Layer 2] 匹配到钓鱼域名模式！")
+  const hostBrand = matchProtectedBrandInHost(url)
+  if (hostBrand && isBrandHostMisuse(url, hostBrand, pageTitle)) {
+    console.log(
+      "  ⚠️ [Layer 2] 非官方下载/官网域名使用受保护品牌:",
+      hostBrand.name
+    )
     return {
       isPhishing: true,
-      confidence: 85,
-      reason: "检测到域名混淆模式（typosquatting）",
+      confidence: 86,
+      reason: `非官方域名使用 ${hostBrand.name} 品牌和下载/官网意图，疑似仿冒页面`,
+      matchedSoftware: hostBrand,
+      layer: "heuristics",
+      timestamp: Date.now()
+    }
+  }
+
+  console.log("  🔎 [Layer 2] 检查 Typosquatting 模式...")
+  // Check generic typosquatting patterns
+  if (detectTyposquattingPatterns(url)) {
+    console.log("  ⚠️ [Layer 2] 匹配到通用钓鱼域名模式！")
+    return {
+      isPhishing: true,
+      confidence: 76,
+      reason: "检测到下载、安装、VIP 等可疑域名模式",
+      matchedSoftware: hostBrand,
       layer: "heuristics",
       timestamp: Date.now()
     }
@@ -162,7 +280,10 @@ export async function layer3AIAnalysis(
     if (nameMatch || nameEnMatch) {
       matchedSoftware = software
       console.log("  💡 [Layer 3] 从 AI 判定理由中匹配到软件:", software.name)
-      console.log("  💡 [Layer 3] 匹配依据:", nameMatch ? `name="${nameLower}"` : `nameEn="${nameEnLower}"`)
+      console.log(
+        "  💡 [Layer 3] 匹配依据:",
+        nameMatch ? `name="${nameLower}"` : `nameEn="${nameEnLower}"`
+      )
       break
     }
   }
@@ -171,7 +292,11 @@ export async function layer3AIAnalysis(
   if (!matchedSoftware) {
     const urlLower = url.toLowerCase()
     for (const software of OFFICIAL_SOFTWARE_REGISTRY) {
-      if (software.officialDomains.some((domain) => urlLower.includes(domain.toLowerCase()))) {
+      if (
+        software.officialDomains.some((domain) =>
+          urlLower.includes(domain.toLowerCase())
+        )
+      ) {
         matchedSoftware = software
         console.log("  💡 [Layer 3] 从 URL 中匹配到软件:", software.name)
         break
@@ -181,20 +306,23 @@ export async function layer3AIAnalysis(
 
   // Priority 3: Keyword matching (least accurate, use as last resort)
   if (!matchedSoftware) {
-    const allText = [
-      url,
-      domContent.title,
-      domContent.h1Text
-    ].join(" ").toLowerCase()
+    const allText = [url, domContent.title, domContent.h1Text]
+      .join(" ")
+      .toLowerCase()
 
-    console.log("  🔍 [Layer 3] 使用关键词匹配，匹配文本:", allText.substring(0, 200))
+    console.log(
+      "  🔍 [Layer 3] 使用关键词匹配，匹配文本:",
+      allText.substring(0, 200)
+    )
 
     // Score each software by number of matched keywords
     let bestMatch: OfficialSoftware | undefined
     let bestScore = 0
 
     for (const software of OFFICIAL_SOFTWARE_REGISTRY) {
-      const matchedKeywords = software.keywords.filter((kw) => allText.includes(kw.toLowerCase()))
+      const matchedKeywords = software.keywords.filter((kw) =>
+        allText.includes(kw.toLowerCase())
+      )
       const score = matchedKeywords.length
 
       if (score > bestScore) {
@@ -265,7 +393,10 @@ export async function analyzePageSecurity(
   }
 
   if (layer2Result) {
-    console.log("⏭️ [Layer 2] 置信度不足 (", layer2Result.confidence + "% < 60%)，进入 Layer 3")
+    console.log(
+      "⏭️ [Layer 2] 置信度不足 (",
+      layer2Result.confidence + "% < 60%)，进入 Layer 3"
+    )
   } else {
     console.log("⏭️ [Layer 2] 无明确结论，进入 Layer 3")
   }

@@ -23,9 +23,10 @@ async function loadAIConfig(): Promise<typeof AI_CONFIG & { apiKey: string }> {
   ])
 
   const provider = storage.aiProvider || "openai"
-  const apiKey = provider === "anthropic"
-    ? (storage.anthropicApiKey || "")
-    : (storage.openaiApiKey || "")
+  const apiKey =
+    provider === "anthropic"
+      ? storage.anthropicApiKey || ""
+      : storage.openaiApiKey || ""
   const baseUrl = storage.baseUrl || AI_CONFIG.baseUrl
   const model = storage.modelId || AI_CONFIG.model
 
@@ -38,15 +39,35 @@ async function loadAIConfig(): Promise<typeof AI_CONFIG & { apiKey: string }> {
   }
 }
 
+function parseBoolean(value: unknown): boolean {
+  if (typeof value === "boolean") return value
+  if (typeof value === "string") return value.toLowerCase() === "true"
+  return Boolean(value)
+}
+
+function normalizeAIResponse(data: any): AIAnalysisResponse {
+  return {
+    isPhishing: parseBoolean(data.isPhishing ?? data.is_phishing),
+    confidence:
+      typeof data.confidence === "number"
+        ? data.confidence
+        : Number(data.confidence) || 0,
+    reason: String(data.reason || "大模型未返回明确理由"),
+    suspiciousElements: Array.isArray(
+      data.suspiciousElements ?? data.suspicious_elements
+    )
+      ? (data.suspiciousElements ?? data.suspicious_elements)
+      : []
+  }
+}
+
 /**
  * Extract software name from URL or content
  */
 function inferTargetSoftware(domContent: ExtractedDOMContent): string | null {
-  const allText = [
-    domContent.url,
-    domContent.title,
-    domContent.h1Text
-  ].join(" ").toLowerCase()
+  const allText = [domContent.url, domContent.title, domContent.h1Text]
+    .join(" ")
+    .toLowerCase()
 
   // Try to match against known software
   for (const software of OFFICIAL_SOFTWARE_REGISTRY) {
@@ -119,7 +140,10 @@ function buildPrompt(domContent: ExtractedDOMContent): string {
 /**
  * Call OpenAI-compatible API
  */
-async function callOpenAI(prompt: string, config: Awaited<ReturnType<typeof loadAIConfig>>): Promise<AIAnalysisResponse> {
+async function callOpenAI(
+  prompt: string,
+  config: Awaited<ReturnType<typeof loadAIConfig>>
+): Promise<AIAnalysisResponse> {
   if (!config.apiKey) {
     throw new Error("API key not configured")
   }
@@ -144,18 +168,25 @@ async function callOpenAI(prompt: string, config: Awaited<ReturnType<typeof load
     temperature: config.temperature
   }
 
-  console.log("📤 [API调用] Request Body:", JSON.stringify(requestBody, null, 2))
+  console.log(
+    "📤 [API调用] Request Body:",
+    JSON.stringify(requestBody, null, 2)
+  )
 
   const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${config.apiKey}`
+      Authorization: `Bearer ${config.apiKey}`
     },
     body: JSON.stringify(requestBody)
   })
 
-  console.log("📥 [API调用] Response Status:", response.status, response.statusText)
+  console.log(
+    "📥 [API调用] Response Status:",
+    response.status,
+    response.statusText
+  )
 
   if (!response.ok) {
     const errorText = await response.text()
@@ -173,7 +204,7 @@ async function callOpenAI(prompt: string, config: Awaited<ReturnType<typeof load
   try {
     const parsed = JSON.parse(content)
     console.log("✅ [API调用] 解析成功:", parsed)
-    return parsed
+    return normalizeAIResponse(parsed)
   } catch (e) {
     console.error("❌ [API调用] JSON 解析失败:", content)
     throw new Error(`Failed to parse AI response: ${content}`)
@@ -183,7 +214,10 @@ async function callOpenAI(prompt: string, config: Awaited<ReturnType<typeof load
 /**
  * Call Anthropic Claude API
  */
-async function callAnthropic(prompt: string, config: Awaited<ReturnType<typeof loadAIConfig>>): Promise<AIAnalysisResponse> {
+async function callAnthropic(
+  prompt: string,
+  config: Awaited<ReturnType<typeof loadAIConfig>>
+): Promise<AIAnalysisResponse> {
   if (!config.apiKey) {
     throw new Error("API key not configured")
   }
@@ -217,7 +251,7 @@ async function callAnthropic(prompt: string, config: Awaited<ReturnType<typeof l
 
   // Parse JSON response
   try {
-    return JSON.parse(content)
+    return normalizeAIResponse(JSON.parse(content))
   } catch (e) {
     throw new Error(`Failed to parse AI response: ${content}`)
   }
@@ -236,11 +270,11 @@ export async function analyzeWithAI(
   // Check if AI is enabled (from storage)
   const storage = await chrome.storage.local.get("settings")
   if (!storage.settings?.enableAI) {
-    console.log("⚠️ [AI分析] AI 功能已禁用")
+    console.log("⚠️ [AI分析] 大模型辅助识别未启用")
     return {
-      isPhishing: true,
-      confidence: 70,
-      reason: "AI分析已禁用，保守判定为可疑",
+      isPhishing: false,
+      confidence: 50,
+      reason: "大模型辅助识别未启用，已使用本地规则完成判断",
       suspiciousElements: []
     }
   }
@@ -250,14 +284,17 @@ export async function analyzeWithAI(
   console.log("🔧 [AI配置] Provider:", config.provider)
   console.log("🔧 [AI配置] Base URL:", config.baseUrl)
   console.log("🔧 [AI配置] Model:", config.model)
-  console.log("🔧 [AI配置] API Key:", config.apiKey ? `${config.apiKey.substring(0, 10)}...` : "未配置")
+  console.log(
+    "🔧 [AI配置] API Key:",
+    config.apiKey ? `${config.apiKey.substring(0, 10)}...` : "未配置"
+  )
 
   if (!config.apiKey) {
     console.warn("❌ [AI分析] API 密钥未配置，跳过分析")
     return {
-      isPhishing: true,
-      confidence: 60,
-      reason: "AI API密钥未配置，保守判定为可疑",
+      isPhishing: false,
+      confidence: 50,
+      reason: "大模型 API Key 未配置，已使用本地规则完成判断",
       suspiciousElements: []
     }
   }
@@ -290,13 +327,27 @@ export async function analyzeWithAI(
       console.warn("⚠️ [AI分析] 判定依据:", result.reason)
 
       // 检查判定依据中是否包含钓鱼特征的关键词
-      const suspiciousKeywords = ["冒充", "假冒", "非官方", "钓鱼", "误导", "诱导", "相似", "混淆"]
-      const hasSuspiciousKeyword = suspiciousKeywords.some(kw =>
-        result.reason.includes(kw) || (result.suspiciousElements && result.suspiciousElements.some((el: string) => el.includes(kw)))
+      const suspiciousKeywords = [
+        "冒充",
+        "假冒",
+        "非官方",
+        "钓鱼",
+        "误导",
+        "诱导",
+        "相似",
+        "混淆"
+      ]
+      const hasSuspiciousKeyword = suspiciousKeywords.some(
+        (kw) =>
+          result.reason.includes(kw) ||
+          (result.suspiciousElements &&
+            result.suspiciousElements.some((el: string) => el.includes(kw)))
       )
 
       if (hasSuspiciousKeyword) {
-        console.warn("🔧 [AI分析] 修正判定：检测到可疑关键词，重新标记为钓鱼网站")
+        console.warn(
+          "🔧 [AI分析] 修正判定：检测到可疑关键词，重新标记为钓鱼网站"
+        )
         result.isPhishing = true
         result.reason += "（已自动修正）"
       }
@@ -306,11 +357,12 @@ export async function analyzeWithAI(
     return result
   } catch (error) {
     console.error("❌ [AI分析] API 调用失败:", error)
-    // Fallback: conservative approach
     return {
-      isPhishing: true,
-      confidence: 60,
-      reason: `AI分析失败: ${error instanceof Error ? error.message : "未知错误"}`,
+      isPhishing: false,
+      confidence: 45,
+      reason: `大模型辅助识别暂不可用：${
+        error instanceof Error ? error.message : "未知错误"
+      }`,
       suspiciousElements: []
     }
   }

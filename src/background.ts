@@ -1,15 +1,10 @@
 import { analyzePageSecurity } from "./services/securityEngine"
-import { incrementStats } from "./utils/cache"
-import { PhishingAnalysisResult } from "./types"
+import { ExtractedDOMContent, PhishingAnalysisResult } from "./types"
+import { getSettings, incrementStats } from "./utils/cache"
 
-console.log("空军反钓鱼扩展已启动")
-
-// Initialize extension on install
-chrome.runtime.onInstalled.addListener(async () => {
-  console.log("空军 Extension 已安装")
-
-  // Initialize storage with default values
+async function bootstrapStorage() {
   const storage = await chrome.storage.local.get()
+
   if (!storage.stats) {
     await chrome.storage.local.set({
       stats: {
@@ -22,176 +17,195 @@ chrome.runtime.onInstalled.addListener(async () => {
   }
 
   if (!storage.blacklist) {
-    await chrome.storage.local.set({
-      blacklist: []
-    })
+    await chrome.storage.local.set({ blacklist: [] })
   }
 
   if (!storage.settings) {
     await chrome.storage.local.set({
       settings: {
-        enableAI: true,
+        enableAI: false,
         warningThreshold: 60,
         blockThreshold: 90,
-        cacheExpiry: 86400000 // 24 hours
+        cacheExpiry: 86400000
       }
     })
-  }
-})
-
-// Listen for page navigation events
-chrome.webNavigation.onCompleted.addListener(
-  async (details) => {
-    // Only analyze main frame (not iframes)
-    if (details.frameId !== 0) return
-
-    // Only analyze http/https pages
-    if (!details.url.startsWith("http")) return
-
-    console.log("页面加载完成:", details.url)
-
-    // Perform security analysis (async, doesn't block page load)
-    analyzePage(details.tabId, details.url)
-  }
-)
-
-// Analyze page security
-async function analyzePage(tabId: number, url: string) {
-  console.log("\n" + "=".repeat(60))
-  console.log("🔍 [页面分析] 开始分析页面")
-  console.log("📍 [页面分析] URL:", url)
-  console.log("🆔 [页面分析] Tab ID:", tabId)
-
-  try {
-    // Increment total scans
-    await incrementStats("totalScans")
-    console.log("📊 [页面分析] 统计: totalScans +1")
-
-    // Get DOM content from content script
-    console.log("📄 [页面分析] 正在提取 DOM 内容...")
-    const response = await chrome.tabs.sendMessage(tabId, {
-      action: "extract_dom"
-    })
-
-    if (!response || !response.success) {
-      console.error("❌ [页面分析] DOM 提取失败:", response?.error)
-      return
-    }
-
-    console.log("✅ [页面分析] DOM 提取成功")
-    console.log("📝 [页面分析] 页面标题:", response.domContent?.title)
-    console.log("📝 [页面分析] 页面描述:", response.domContent?.metaDescription?.substring(0, 100))
-
-    // Perform three-layer analysis
-    console.log("\n⚙️ [页面分析] 开始三层过滤分析...")
-    const result = await analyzePageSecurity(
-      url,
-      response.domContent,
-      response.domContent?.title
-    )
-
-    console.log("\n" + "─".repeat(60))
-    console.log("📊 [分析结果] ==================")
-    console.log("📊 [分析结果] 是否钓鱼:", result.isPhishing ? "⚠️ 是" : "✅ 否")
-    console.log("📊 [分析结果] 置信度:", result.confidence + "%")
-    console.log("📊 [分析结果] 判定依据:", result.reason)
-    console.log("📊 [分析结果] 分析层级:", result.layer)
-    if (result.matchedSoftware) {
-      console.log("📊 [分析结果] 识别软件:", result.matchedSoftware.name)
-    }
-    console.log("─".repeat(60) + "\n")
-
-    // Update stats based on result
-    if (result.isPhishing) {
-      const settings = await chrome.storage.local.get("settings")
-      const blockThreshold = settings.settings?.blockThreshold || 90
-      const warningThreshold = settings.settings?.warningThreshold || 60
-
-      console.log("🚨 [防护措施] 检测到钓鱼网站")
-      console.log("🚨 [防护措施] 当前置信度:", result.confidence + "%")
-      console.log("🚨 [防护措施] 拦截阈值:", blockThreshold + "%")
-      console.log("🚨 [防护措施] 警告阈值:", warningThreshold + "%")
-
-      if (result.confidence >= blockThreshold) {
-        await incrementStats("phishingBlocked")
-        console.log("🛑 [防护措施] 触发红色全屏覆盖 (90%+)")
-        console.log("🛑 [防护措施] matchedSoftware:", result.matchedSoftware)
-        // Inject red overlay
-        const officialUrl = result.matchedSoftware?.officialDomains[0]
-          ? `https://${result.matchedSoftware.officialDomains[0]}`
-          : "#"
-
-        chrome.tabs.sendMessage(tabId, {
-          action: "inject_overlay",
-          data: {
-            softwareName: result.matchedSoftware?.name || "未知软件",
-            officialUrl,
-            reason: result.reason,
-            confidence: result.confidence
-          }
-        })
-      } else if (result.confidence >= warningThreshold) {
-        await incrementStats("warningShown")
-        console.log("⚠️ [防护措施] 触发黄色警告栏 (60-90%)")
-        console.log("⚠️ [防护措施] matchedSoftware:", result.matchedSoftware)
-        // Inject yellow warning bar
-        const officialUrl = result.matchedSoftware?.officialDomains[0]
-          ? `https://${result.matchedSoftware.officialDomains[0]}`
-          : "#"
-
-        chrome.tabs.sendMessage(tabId, {
-          action: "inject_warning",
-          data: {
-            softwareName: result.matchedSoftware?.name || "未知软件",
-            officialUrl,
-            reason: result.reason,
-            confidence: result.confidence
-          }
-        })
-      } else {
-        console.log("✅ [防护措施] 置信度低于警告阈值，不显示警告")
-      }
-    } else {
-      await incrementStats("officialVerified")
-      console.log("✅ [防护措施] 页面安全，已认证")
-    }
-
-    // Save result for popup access
-    await chrome.storage.local.set({
-      [`analysis_${tabId}`]: {
-        status: result.isPhishing
-          ? result.confidence >= 90
-            ? "blocked"
-            : "warning"
-          : "safe",
-        result
-      }
-    })
-
-    console.log("💾 [存储] 分析结果已保存到 storage")
-    console.log("=".repeat(60) + "\n")
-  } catch (error) {
-    console.error("❌ [页面分析] 分析失败:", error)
   }
 }
 
-// Listen for messages from content scripts and popup
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log("收到消息:", request)
+function statusFromResult(
+  result: PhishingAnalysisResult,
+  blockThreshold: number
+): "safe" | "warning" | "blocked" {
+  if (!result.isPhishing) return "safe"
+  return result.confidence >= blockThreshold ? "blocked" : "warning"
+}
 
-  if (request.action === "get_page_status") {
-    // Return saved analysis result for current tab
-    if (sender.tab?.id) {
-      chrome.storage.local.get(`analysis_${sender.tab.id}`, (data) => {
-        const result = data[`analysis_${sender.tab.id}`]
-        sendResponse(result || { status: "pending" })
-      })
-      return true
+function needsDomReview(result: PhishingAnalysisResult): boolean {
+  return (
+    !result.isPhishing &&
+    result.layer === "heuristics" &&
+    result.reason.includes("需AI分析")
+  )
+}
+
+function officialUrlFor(result: PhishingAnalysisResult): string {
+  const officialDomain = result.matchedSoftware?.officialDomains?.[0]
+  return officialDomain ? `https://${officialDomain}` : "#"
+}
+
+async function persistResult(tabId: number, result: PhishingAnalysisResult) {
+  const settings = await getSettings()
+
+  await incrementStats("totalScans")
+
+  if (result.isPhishing && result.confidence >= settings.blockThreshold) {
+    await incrementStats("phishingBlocked")
+  } else if (
+    result.isPhishing &&
+    result.confidence >= settings.warningThreshold
+  ) {
+    await incrementStats("warningShown")
+  } else if (!result.isPhishing && result.layer === "whitelist") {
+    await incrementStats("officialVerified")
+  }
+
+  await chrome.storage.local.set({
+    [`analysis_${tabId}`]: {
+      status: statusFromResult(result, settings.blockThreshold),
+      result
+    }
+  })
+}
+
+async function createUiDecision(result: PhishingAnalysisResult) {
+  if (!result.isPhishing) return null
+
+  const settings = await getSettings()
+  if (result.confidence < settings.warningThreshold) return null
+
+  return {
+    action:
+      result.confidence >= settings.blockThreshold
+        ? "inject_overlay"
+        : "inject_warning",
+    data: {
+      softwareName: result.matchedSoftware?.name || "可疑站点",
+      officialUrl: officialUrlFor(result),
+      reason: result.reason,
+      confidence: result.confidence
+    }
+  }
+}
+
+async function analyzeFast(tabId: number, url: string) {
+  const result = await analyzePageSecurity(url)
+
+  if (needsDomReview(result)) {
+    return {
+      needsDom: true,
+      ui: null
     }
   }
 
+  await persistResult(tabId, result)
+  return {
+    needsDom: false,
+    ui: await createUiDecision(result)
+  }
+}
+
+async function analyzeDom(
+  tabId: number,
+  url: string,
+  domContent: ExtractedDOMContent
+) {
+  const result = await analyzePageSecurity(url, domContent, domContent.title)
+  await persistResult(tabId, result)
+
+  return {
+    needsDom: false,
+    ui: await createUiDecision(result)
+  }
+}
+
+chrome.runtime.onInstalled.addListener(async () => {
+  await bootstrapStorage()
+})
+
+chrome.runtime.onStartup.addListener(async () => {
+  await bootstrapStorage()
+})
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "analyze_url_fast") {
+    ;(async () => {
+      const tabId = sender.tab?.id
+      const url = request.url || sender.tab?.url
+      if (!tabId || !url?.startsWith("http")) {
+        sendResponse({ success: false, error: "无可分析页面" })
+        return
+      }
+
+      await bootstrapStorage()
+      sendResponse({ success: true, data: await analyzeFast(tabId, url) })
+    })()
+    return true
+  }
+
+  if (request.action === "analyze_dom") {
+    ;(async () => {
+      const tabId = sender.tab?.id
+      const url = request.url || sender.tab?.url
+      if (!tabId || !url?.startsWith("http") || !request.domContent) {
+        sendResponse({ success: false, error: "缺少页面内容" })
+        return
+      }
+
+      await bootstrapStorage()
+      sendResponse({
+        success: true,
+        data: await analyzeDom(tabId, url, request.domContent)
+      })
+    })()
+    return true
+  }
+
+  if (request.action === "get_runtime_info") {
+    sendResponse({
+      success: true,
+      data: {
+        datasetVersion: "local-registry"
+      }
+    })
+    return true
+  }
+
+  if (request.action === "sync_open_dataset") {
+    sendResponse({
+      success: true,
+      data: {
+        datasetVersion: "local-registry"
+      }
+    })
+    return true
+  }
+
+  if (request.action === "get_page_status") {
+    const tabId = sender.tab?.id
+    if (!tabId) return false
+
+    chrome.storage.local.get(`analysis_${tabId}`, (data) => {
+      sendResponse(data[`analysis_${tabId}`] || { status: "pending" })
+    })
+    return true
+  }
+
+  if (request.action === "risk_bypassed") {
+    sendResponse({ success: true })
+    return true
+  }
+
   if (request.action === "report_phishing") {
-    // User reported a phishing site
     chrome.storage.local.get("blacklist", async (data) => {
       const blacklist = data.blacklist || []
       if (!blacklist.includes(request.url)) {

@@ -68,7 +68,9 @@ export function isOfficialDomain(domain: string): boolean {
 /**
  * Check if domain is suspiciously similar to official domains
  */
-export function checkDomainSimilarity(domain: string): DomainMatchResult | null {
+export function checkDomainSimilarity(
+  domain: string
+): DomainMatchResult | null {
   const normalizedDomain = extractDomain(domain).toLowerCase()
   const officialDomains = getAllOfficialDomains()
 
@@ -95,28 +97,9 @@ export function checkDomainSimilarity(domain: string): DomainMatchResult | null 
  * Check for common typosquatting patterns
  */
 export function detectTyposquattingPatterns(domain: string): boolean {
-  const normalizedDomain = domain.toLowerCase()
+  const normalizedDomain = extractDomain(domain).toLowerCase()
 
   const patterns = [
-    // Character substitution
-    /fe1shu/,
-    /d1ngtalk/,
-    /wps-vip/,
-    // Prefix patterns (e.g., desktop-wps.com)
-    /^(desktop|pc|mobile|download|free|vip|official)-wps/,
-    /^(desktop|pc|mobile|download|free|vip|official)-feishu/,
-    /^(desktop|pc|mobile|download|free|vip|official)-dingtalk/,
-    // Extra words
-    /feishu-download/,
-    /dingtalk-vip/,
-    /wps-download/,
-    // Hyphenation
-    /fei-shu/,
-    /ding-talk/,
-    // Numbers at end
-    /feishu\d+/,
-    /dingtalk\d+/,
-    /wps\d+/,
     // Common phishing patterns
     /-download\./,
     /-vip\./,
@@ -153,15 +136,18 @@ export function isSearchEngine(url: string): boolean {
     "haosou.com"
   ]
 
-  return searchEngines.some((engine) =>
-    domain === engine || domain.endsWith(`.${engine}`)
+  return searchEngines.some(
+    (engine) => domain === engine || domain.endsWith(`.${engine}`)
   )
 }
 
 /**
  * Check if URL contains sensitive keywords
  */
-export function containsSensitiveKeywords(url: string, pageTitle?: string): boolean {
+export function containsSensitiveKeywords(
+  url: string,
+  pageTitle?: string
+): boolean {
   // Skip check if it's a search engine
   if (isSearchEngine(url)) {
     console.log("  🔍 [关键词检测] 搜索引擎页面，跳过关键词检测")
@@ -173,8 +159,9 @@ export function containsSensitiveKeywords(url: string, pageTitle?: string): bool
   const urlLower = url.toLowerCase()
   const titleLower = (pageTitle || "").toLowerCase()
 
-  return allKeywords.some((keyword: string) =>
-    urlLower.includes(keyword.toLowerCase()) ||
-    titleLower.includes(keyword.toLowerCase())
+  return allKeywords.some(
+    (keyword: string) =>
+      urlLower.includes(keyword.toLowerCase()) ||
+      titleLower.includes(keyword.toLowerCase())
   )
 }
